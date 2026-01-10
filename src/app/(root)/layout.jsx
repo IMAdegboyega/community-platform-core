@@ -5,7 +5,8 @@ import MobileNav from "@/components/MobileNav"
 import SideBar from "@/components/SideBar"
 import User from "@/components/User"
 import Link from "next/link"
-import { useEffect, useState } from "react"
+import { useEffect, useState } from "react"     
+
 
 export default function Home({children}) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
