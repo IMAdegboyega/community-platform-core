@@ -1,59 +1,220 @@
 'use client'
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import MyWall from '@/components/PersonalProfile/MyWall';
-import Photos from '@/components/PersonalProfile/Photos';
-import Videos from '@/components/PersonalProfile/Videos';
-import Followers from '@/components/PersonalProfile/Followers';
-import Following from '@/components/PersonalProfile/Following';
-import Subscribers from '@/components/PersonalProfile/Subscribers';
-import EditProfile from '@/components/PersonalProfile/EditProfile';
-import { ArrowLeft, Share, Settings } from 'lucide-react';
+import { ArrowLeft, Settings, Share2, Copy, Check } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { usersApi, postsApi } from '@/lib/api';
 
 const PersonalProfile = () => {
-  const [activeTab, setActiveTab] = useState('My Wall');
-  const [isOnline, setIsOnline] = useState(true);
-  const [showEditProfile, setShowEditProfile] = useState(false);
-  const [showBio, setShowBio] = useState(false);
+  const { user } = useAuth()
+  const [activeTab, setActiveTab] = useState('Posts')
+  const [isOnline, setIsOnline] = useState(true)
+  const [showBio, setShowBio] = useState(false)
+  const [copied, setCopied] = useState(false)
+  
+  // Profile data
+  const [profile, setProfile] = useState(null)
+  const [posts, setPosts] = useState([])
+  const [followers, setFollowers] = useState([])
+  const [following, setFollowing] = useState([])
+  const [loading, setLoading] = useState(true)
 
-  const tabs = ['My Wall', 'Photos', 'Videos', 'Followers', 'Following', 'Subscribers'];
+  const tabs = ['Posts', 'Photos', 'Videos', 'Followers', 'Following']
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchProfileData()
+    }
+  }, [user?.id])
+
+  const fetchProfileData = async () => {
+    setLoading(true)
+    try {
+      // Fetch user profile
+      const profileData = await usersApi.getUser(user.id)
+      setProfile(profileData)
+
+      // Fetch user posts
+      const { posts: userPosts } = await postsApi.getUserPosts(user.id, 20, 0)
+      setPosts(userPosts || [])
+
+      // Fetch followers
+      const { users: followersList } = await usersApi.getFollowers(user.id, 20, 0)
+      setFollowers(followersList || [])
+
+      // Fetch following
+      const { users: followingList } = await usersApi.getFollowing(user.id, 20, 0)
+      setFollowing(followingList || [])
+    } catch (error) {
+      console.error('Failed to fetch profile data:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleShare = () => {
+    const url = `${window.location.origin}/user/${user?.username || user?.id}`
+    navigator.clipboard.writeText(url)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   const renderTabContent = () => {
     switch (activeTab) {
-      case 'My Wall':
-        return <MyWall/>;
+      case 'Posts':
+        return (
+          <div className="grid grid-cols-3 gap-1">
+            {posts.length === 0 ? (
+              <div className="col-span-3 py-12 text-center text-gray-500">
+                No posts yet
+              </div>
+            ) : (
+              posts.map((post) => (
+                <div key={post.id} className="aspect-square bg-gray-100 relative">
+                  {post.media && post.media.length > 0 ? (
+                    <Image
+                      src={post.media[0].url}
+                      alt="Post"
+                      fill
+                      className="object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-100 to-purple-100 p-2">
+                      <p className="text-xs text-gray-600 line-clamp-3">{post.caption}</p>
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        )
       case 'Photos':
-        return <Photos/>;
+        return (
+          <div className="grid grid-cols-3 gap-1">
+            {posts.filter(p => p.media?.some(m => m.type === 'image')).length === 0 ? (
+              <div className="col-span-3 py-12 text-center text-gray-500">
+                No photos yet
+              </div>
+            ) : (
+              posts
+                .filter(p => p.media?.some(m => m.type === 'image'))
+                .map((post) => (
+                  <div key={post.id} className="aspect-square bg-gray-100 relative">
+                    <Image
+                      src={post.media[0].url}
+                      alt="Photo"
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                ))
+            )}
+          </div>
+        )
       case 'Videos':
-        return <Videos/>;
+        return (
+          <div className="grid grid-cols-3 gap-1">
+            {posts.filter(p => p.media?.some(m => m.type === 'video')).length === 0 ? (
+              <div className="col-span-3 py-12 text-center text-gray-500">
+                No videos yet
+              </div>
+            ) : (
+              posts
+                .filter(p => p.media?.some(m => m.type === 'video'))
+                .map((post) => (
+                  <div key={post.id} className="aspect-square bg-gray-100 relative">
+                    <video
+                      src={post.media[0].url}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ))
+            )}
+          </div>
+        )
       case 'Followers':
-        return <Followers/>;
+        return (
+          <div className="space-y-3">
+            {followers.length === 0 ? (
+              <div className="py-12 text-center text-gray-500">
+                No followers yet
+              </div>
+            ) : (
+              followers.map((follower) => (
+                <div key={follower.id} className="flex items-center justify-between p-3 bg-white rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <img
+                      src={follower.profile_picture || '/img/avatar.png'}
+                      alt={follower.username}
+                      className="w-12 h-12 rounded-full object-cover"
+                    />
+                    <div>
+                      <p className="font-semibold">{follower.display_name || follower.username}</p>
+                      <p className="text-sm text-gray-500">@{follower.username}</p>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )
       case 'Following':
-        return <Following/>;
-      case 'Subscribers':
-        return <Subscribers/>;
+        return (
+          <div className="space-y-3">
+            {following.length === 0 ? (
+              <div className="py-12 text-center text-gray-500">
+                Not following anyone yet
+              </div>
+            ) : (
+              following.map((followed) => (
+                <div key={followed.id} className="flex items-center justify-between p-3 bg-white rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <img
+                      src={followed.profile_picture || '/img/avatar.png'}
+                      alt={followed.username}
+                      className="w-12 h-12 rounded-full object-cover"
+                    />
+                    <div>
+                      <p className="font-semibold">{followed.display_name || followed.username}</p>
+                      <p className="text-sm text-gray-500">@{followed.username}</p>
+                    </div>
+                  </div>
+                  <button className="px-4 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">
+                    Following
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        )
       default:
-        return <MyWall/>;
+        return null
     }
-  };
-  
-  const profileStats = {
-    profession: 'Data Analyst',
-    language: 'English', 
-    hobby: 'Music',
-    height: '5\'3"',
-    city: 'Lagos',
-    age: '20'
-  };
-
-  if (showEditProfile) {
-    return <EditProfile onBack={() => setShowEditProfile(false)} />;
   }
+
+  if (loading) {
+    return (
+      <div className="max-w-5xl mx-auto min-h-screen bg-gray-50">
+        <div className="bg-white p-6">
+          <div className="flex items-start gap-6">
+            <div className="w-24 h-24 rounded-full bg-gray-200 animate-pulse" />
+            <div className="flex-1">
+              <div className="h-6 w-32 bg-gray-200 rounded animate-pulse mb-2" />
+              <div className="h-4 w-24 bg-gray-200 rounded animate-pulse mb-4" />
+              <div className="h-20 w-full bg-gray-200 rounded animate-pulse" />
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const displayProfile = profile || user
 
   return (
     <div className="max-w-5xl mx-auto min-h-screen bg-gray-50">
-      {/* Mobile Header - only on mobile */}
+      {/* Mobile Header */}
       <div className="flex items-center justify-between p-4 bg-white md:hidden">
         <ArrowLeft className="w-6 h-6 text-gray-700" />
         <h1 className="font-semibold text-gray-900">Profile</h1>
@@ -65,141 +226,111 @@ const PersonalProfile = () => {
         <div className="max-w-5xl mx-auto px-4 py-6">
           {/* Mobile Layout */}
           <div className="flex flex-col items-center text-center md:hidden">
-            {/* Profile Picture */}
             <div className="relative mb-4">
               <div className="w-24 h-24 rounded-full bg-gray-300 overflow-hidden">
-                <Image 
-                  src="/img/lady.png" 
+                <img 
+                  src={displayProfile?.profile_picture || '/img/avatar.png'} 
                   alt="Profile" 
-                  width={96}
-                  height={96}
                   className="w-full h-full object-cover"
                 />
               </div>
               {isOnline && (
-                <div className="absolute bottom-0 right-0 w-6 h-6 bg-blue-500 rounded-full border-3 border-white"></div>
+                <div className="absolute bottom-0 right-0 w-6 h-6 bg-green-500 rounded-full border-3 border-white"></div>
               )}
             </div>
 
-            {/* Name & Username */}
-            <h1 className="text-xl font-semibold text-gray-900">Elena Paul</h1>
-            <p className="text-gray-500 text-sm mb-2">@elena</p>
+            <h1 className="text-xl font-semibold text-gray-900">
+              {displayProfile?.display_name || displayProfile?.username}
+            </h1>
+            <p className="text-gray-500 text-sm mb-2">@{displayProfile?.username}</p>
 
-            {/* Stats Row */}
             <div className="flex items-center justify-center gap-6 py-4">
               <div className="text-center">
-                <p className="font-semibold text-gray-900">128</p>
+                <p className="font-semibold text-gray-900">{posts.length}</p>
                 <p className="text-xs text-gray-500">Posts</p>
               </div>
               <div className="text-center">
-                <p className="font-semibold text-gray-900">14.2k</p>
+                <p className="font-semibold text-gray-900">{displayProfile?.followers_count || followers.length}</p>
                 <p className="text-xs text-gray-500">Followers</p>
               </div>
               <div className="text-center">
-                <p className="font-semibold text-gray-900">326</p>
+                <p className="font-semibold text-gray-900">{displayProfile?.following_count || following.length}</p>
                 <p className="text-xs text-gray-500">Following</p>
               </div>
             </div>
 
-            {/* Bio - Collapsible on mobile */}
-            <div className="w-full px-2 mb-4">
-              <p className={`text-gray-700 text-sm ${!showBio ? 'line-clamp-2' : ''}`}>
-                Hello bro! DM nudies for you, DM if you wanna talk, selling contents, custom videos, Feeds, Bisexual, FreeEnds
-              </p>
-              <button 
-                onClick={() => setShowBio(!showBio)}
-                className="text-blue-600 text-sm mt-1"
-              >
-                {showBio ? 'Show less' : 'Show more'}
-              </button>
-            </div>
+            {displayProfile?.bio && (
+              <p className="text-gray-700 text-sm px-2 mb-4">{displayProfile.bio}</p>
+            )}
 
-            {/* Action Buttons */}
             <div className="flex items-center gap-3 w-full">
-              <button 
-                onClick={() => setShowEditProfile(true)} 
-                className="flex-1 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
-              >
+              <button className="flex-1 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">
                 Edit Profile
               </button>
-              <button className="flex-1 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">
-                Share Profile
-              </button>
-            </div>
-
-            {/* Online Toggle - Mobile */}
-            <div className="flex items-center gap-3 mt-4">
-              <span className="text-sm text-gray-600">Online</span>
-              <button
-                onClick={() => setIsOnline(!isOnline)}
-                className={`relative w-11 h-6 rounded-full transition-colors ${
-                  isOnline ? 'bg-blue-600' : 'bg-gray-300'
-                }`}
+              <button 
+                onClick={handleShare}
+                className="flex-1 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 flex items-center justify-center gap-2"
               >
-                <div
-                  className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-md transform transition-transform ${
-                    isOnline ? 'translate-x-5' : 'translate-x-0.5'
-                  }`}
-                />
+                {copied ? <Check size={16} /> : <Share2 size={16} />}
+                {copied ? 'Copied!' : 'Share'}
               </button>
             </div>
           </div>
 
-          {/* Tablet & Desktop Layout */}
+          {/* Desktop Layout */}
           <div className="hidden md:flex items-start justify-between">
             <div className="flex items-start gap-6">
-              {/* Profile Picture */}
               <div className="relative">
-                <div className="w-24 h-24 lg:w-28 lg:h-28 rounded-full bg-gray-300 overflow-hidden">
-                  <Image 
-                    src="/img/lady.png" 
+                <div className="w-28 h-28 rounded-full bg-gray-300 overflow-hidden">
+                  <img 
+                    src={displayProfile?.profile_picture || '/img/avatar.png'} 
                     alt="Profile" 
-                    width={112}
-                    height={112}
                     className="w-full h-full object-cover"
                   />
                 </div>
                 {isOnline && (
-                  <div className="absolute bottom-0 right-0 w-6 h-6 bg-blue-500 rounded-full border-3 border-white"></div>
+                  <div className="absolute bottom-0 right-0 w-6 h-6 bg-green-500 rounded-full border-3 border-white"></div>
                 )}
               </div>
 
-              {/* Profile Info */}
               <div className="flex-1">
-                <h1 className="text-2xl font-semibold text-gray-900">Elena Paul</h1>
-                <p className="text-gray-500 text-sm">@elena</p>
-                <p className="text-gray-700 mt-2 max-w-md">
-                  Hello bro! DM nudies for you, DM if you wanna talk, selling contents, custom videos, Feeds, Bisexual, FreeEnds
-                </p>
-                <div className="flex gap-3 mt-4">
-                  <button 
-                    onClick={() => setShowEditProfile(true)} 
-                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                  >
+                <h1 className="text-2xl font-semibold text-gray-900">
+                  {displayProfile?.display_name || displayProfile?.username}
+                </h1>
+                <p className="text-gray-500">@{displayProfile?.username}</p>
+                
+                <div className="flex gap-6 my-4">
+                  <div>
+                    <span className="font-semibold">{posts.length}</span>
+                    <span className="text-gray-500 ml-1">posts</span>
+                  </div>
+                  <div>
+                    <span className="font-semibold">{displayProfile?.followers_count || followers.length}</span>
+                    <span className="text-gray-500 ml-1">followers</span>
+                  </div>
+                  <div>
+                    <span className="font-semibold">{displayProfile?.following_count || following.length}</span>
+                    <span className="text-gray-500 ml-1">following</span>
+                  </div>
+                </div>
+
+                {displayProfile?.bio && (
+                  <p className="text-gray-700 max-w-md mb-4">{displayProfile.bio}</p>
+                )}
+
+                <div className="flex gap-3">
+                  <button className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
                     Edit Profile
                   </button>
-                  <button className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
-                    Share
+                  <button 
+                    onClick={handleShare}
+                    className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2"
+                  >
+                    {copied ? <Check size={16} /> : <Share2 size={16} />}
+                    {copied ? 'Copied!' : 'Share'}
                   </button>
                 </div>
               </div>
-            </div>
-
-            {/* Online Toggle */}
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-gray-600">Online Mode</span>
-              <button
-                onClick={() => setIsOnline(!isOnline)}
-                className={`relative w-11 h-6 rounded-full transition-colors ${
-                  isOnline ? 'bg-blue-600' : 'bg-gray-300'
-                }`}
-              >
-                <div
-                  className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-md transform transition-transform ${
-                    isOnline ? 'translate-x-5' : 'translate-x-0.5'
-                  }`}
-                />
-              </button>
             </div>
           </div>
         </div>
@@ -208,33 +339,15 @@ const PersonalProfile = () => {
       {/* Navigation Tabs */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10 mt-2">
         <div className="max-w-5xl mx-auto">
-          {/* Mobile Tabs - Scrollable */}
-          <div className="flex overflow-x-auto scrollbar-hide md:hidden">
+          <div className="flex overflow-x-auto scrollbar-hide">
             {tabs.map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`flex-shrink-0 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                className={`flex-1 min-w-max px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
                   activeTab === tab
                     ? 'text-blue-600 border-blue-600'
                     : 'text-gray-500 border-transparent hover:text-gray-700'
-                }`}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
-
-          {/* Tablet & Desktop Tabs */}
-          <div className="hidden md:flex gap-2 lg:gap-4 p-2">
-            {tabs.map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`flex-1 py-3 text-sm font-medium border rounded-lg transition-colors ${
-                  activeTab === tab
-                    ? 'text-blue-600 border-blue-600 bg-blue-50'
-                    : 'text-gray-500 border-gray-200 hover:text-gray-700 hover:bg-gray-50'
                 }`}
               >
                 {tab}
@@ -245,94 +358,14 @@ const PersonalProfile = () => {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-5xl mx-auto py-4 md:py-6 px-4 md:px-0">
-        <div className="grid grid-cols-12 gap-4 md:gap-6">
-          {/* Left Sidebar - Hidden on mobile, shown on tablet as collapsible, full on desktop */}
-          <div className="hidden lg:block lg:col-span-3">
-            <div className="bg-white rounded-lg p-6 sticky top-20">
-              <h3 className="font-semibold text-gray-900 mb-4">Bio</h3>
-              <div className="space-y-3">
-                {Object.entries(profileStats).map(([key, value]) => (
-                  <div key={key}>
-                    <span className="text-gray-500 text-sm capitalize">{key}</span>
-                    <p className="text-gray-900">{value}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Bio Card - Tablet only (horizontal layout) */}
-          <div className="hidden md:block lg:hidden col-span-12 mb-2">
-            <div className="bg-white rounded-lg p-4">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold text-gray-900">Bio</h3>
-                <button 
-                  onClick={() => setShowBio(!showBio)}
-                  className="text-blue-600 text-sm"
-                >
-                  {showBio ? 'Hide' : 'Show'}
-                </button>
-              </div>
-              {showBio && (
-                <div className="grid grid-cols-3 gap-4">
-                  {Object.entries(profileStats).map(([key, value]) => (
-                    <div key={key}>
-                      <span className="text-gray-500 text-xs capitalize">{key}</span>
-                      <p className="text-gray-900 text-sm">{value}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Main Feed */}
-          <div className="col-span-12 lg:col-span-9">
-            {renderTabContent()}
-          </div>
-        </div>
+      <div className="max-w-5xl mx-auto py-4 px-4">
+        {renderTabContent()}
       </div>
 
-      {/* Mobile Bio Sheet - Slide up from bottom */}
-      <div className="md:hidden">
-        <button
-          onClick={() => setShowBio(!showBio)}
-          className="fixed bottom-20 left-4 right-4 bg-white rounded-t-xl shadow-lg p-3 text-center text-sm font-medium text-gray-700 border border-gray-200"
-          style={{ display: showBio ? 'none' : 'block' }}
-        >
-          View Bio Details
-        </button>
-        
-        {showBio && (
-          <div className="fixed inset-0 z-50 md:hidden">
-            <div 
-              className="absolute inset-0 bg-black/40"
-              onClick={() => setShowBio(false)}
-            />
-            <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl p-6 pb-24">
-              <div className="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-4" />
-              <h3 className="font-semibold text-gray-900 mb-4 text-center">Bio</h3>
-              <div className="grid grid-cols-2 gap-4">
-                {Object.entries(profileStats).map(([key, value]) => (
-                  <div key={key} className="bg-gray-50 rounded-lg p-3">
-                    <span className="text-gray-500 text-xs capitalize">{key}</span>
-                    <p className="text-gray-900 font-medium">{value}</p>
-                  </div>
-                ))}
-              </div>
-              <button
-                onClick={() => setShowBio(false)}
-                className="w-full mt-6 py-3 bg-gray-100 text-gray-700 rounded-lg font-medium"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
+      {/* Mobile Bottom Padding */}
+      <div className="h-20 md:hidden" />
     </div>
-  );
-};
+  )
+}
 
-export default PersonalProfile;
+export default PersonalProfile
