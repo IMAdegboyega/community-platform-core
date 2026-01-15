@@ -67,23 +67,47 @@ class ApiClient {
     };
 
     try {
+      console.log(`[API] ${config.method || 'GET'} ${url}`);
       const response = await fetch(url, config);
-      const data = await response.json();
+      
+      // Handle empty responses
+      const text = await response.text();
+      let data = null;
+      
+      if (text) {
+        try {
+          data = JSON.parse(text);
+        } catch (e) {
+          console.error('[API] Failed to parse response:', text);
+          if (!response.ok) {
+            throw new ApiError(`Server error: ${text || response.statusText}`, response.status, null);
+          }
+        }
+      }
 
       if (!response.ok) {
         // Handle token expiration
         if (response.status === 401) {
           this.clearAuth();
-          if (typeof window !== 'undefined') {
+          if (typeof window !== 'undefined' && !endpoint.includes('/auth/')) {
             window.location.href = '/sign-in';
           }
         }
-        throw new ApiError(data.error || 'Request failed', response.status, data);
+        
+        const errorMessage = data?.error || data?.message || `Request failed with status ${response.status}`;
+        throw new ApiError(errorMessage, response.status, data);
       }
 
-      return data;
+      return data || {};
     } catch (error) {
+      console.error('[API] Request error:', error);
       if (error instanceof ApiError) throw error;
+      
+      // Check if it's a network error (backend not reachable)
+      if (error.message === 'Failed to fetch') {
+        throw new ApiError('Cannot connect to server. Please check your internet connection or try again later.', 0, null);
+      }
+      
       throw new ApiError(error.message || 'Network error', 0, null);
     }
   }

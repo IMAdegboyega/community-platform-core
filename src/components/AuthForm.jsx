@@ -43,8 +43,10 @@ const AuthForm = ({ type }) => {
       
       if (response) {
         setSuccessMessage("Login successful!");
-        // Redirect to home page
-        router.push('/');
+        // Redirect to home page - use window.location for reliable redirect
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 500);
       }
     } catch (error) {
       console.error('Login error:', error);
@@ -85,6 +87,10 @@ const AuthForm = ({ type }) => {
         return;
       }
 
+      // Debug: Show which API we're hitting
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
+      console.log('Registering with API:', apiUrl);
+
       // Call register API
       await authApi.register(email, username, password, phoneNumber || null);
       
@@ -93,8 +99,10 @@ const AuthForm = ({ type }) => {
       // Auto login after registration
       await authApi.login(email, password);
       
-      // Redirect to home
-      router.push('/');
+      // Redirect to home - use window.location for reliable redirect
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 500);
       
     } catch (error) {
       console.error('Registration error:', error);
