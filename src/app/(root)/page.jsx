@@ -1,10 +1,10 @@
 'use client'
 
-import React from 'react'
-import Stories from '@/components/Stories'
 import NewPost from '@/components/NewPost'
 import Posts from '@/components/Posts'
 import Recommendations from '@/components/Recommendations'
+import Stories from '@/components/stories'
+import React from 'react'
 
 const HomePage = () => {
   const handlePost = (content) => {
@@ -34,7 +34,7 @@ const HomePage = () => {
 
       {/* Mobile/Tablet Recommendations - Horizontal Scroll */}
       <div className="px-4 mt-4 lg:hidden">
-        <Recommendations 
+        <Recommendations
           onUserClick={handleUserClick}
           onSaveUser={handleSaveUser}
         />
@@ -45,7 +45,7 @@ const HomePage = () => {
         {/* Left Content - Post Creation and Feed */}
         <div className="lg:col-span-2 space-y-4 md:space-y-6">
           {/* Create Post Section */}
-          <NewPost 
+          <NewPost
             onPost={handlePost}
             onImageClick={handleImageUpload}
             onCameraClick={handleCamera}
