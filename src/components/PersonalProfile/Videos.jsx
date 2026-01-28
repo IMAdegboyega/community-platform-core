@@ -1,163 +1,167 @@
 'use client'
 
-import React, { useState } from 'react';
-import { Play, Lock, Heart, MessageCircle, Share2, PenLine } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Play, Lock, Heart, MessageCircle, Share2, PenLine, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import { PostOptionsModal } from './FloatyModal';
+import { postsApi } from '@/lib/api';
 
-const Videos = () => {
+const Videos = ({ userId }) => {
   const [showOptionsModal, setShowOptionsModal] = useState(false);
   const [modalPosition, setModalPosition] = useState({ top: 0, left: 0 });
-  const [selectedPhotoId, setSelectedPhotoId] = useState(null);
+  const [selectedVideoId, setSelectedVideoId] = useState(null);
+  const [videos, setVideos] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Sample video data
-  const videos = [
-    { id: 1, thumbnail: '/img/lady.png', duration: '2:45', locked: false, views: 1234 },
-    { id: 2, thumbnail: '/img/lady.png', duration: '1:30', locked: false, views: 567 },
-    { id: 3, thumbnail: '/img/lady.png', duration: '3:15', locked: true, views: 890 },
-    { id: 4, thumbnail: '/img/lady.png', duration: '0:45', locked: false, views: 2345 },
-    { id: 5, thumbnail: '/img/lady.png', duration: '4:20', locked: true, views: 456 },
-    { id: 6, thumbnail: '/img/lady.png', duration: '2:00', locked: false, views: 789 },
-  ];
+  useEffect(() => {
+    const fetchVideos = async () => {
+      if (!userId) return;
+      
+      try {
+        setLoading(true);
+        const response = await postsApi.getUserPosts(userId);
+        const postsData = Array.isArray(response) ? response : (response.data || response.posts || []);
+        
+        // Filter posts that have video media
+        const videoPosts = postsData.filter(post => 
+          post.media && post.media.some(m => m.media_type === 'video')
+        );
+        
+        setVideos(videoPosts);
+      } catch (err) {
+        console.error('Failed to fetch videos:', err);
+        setVideos([]);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const handleThreeDotsClick = (event, photoId) => {
+    fetchVideos();
+  }, [userId]);
+
+  const handleThreeDotsClick = (event, videoId) => {
     event.stopPropagation();
     const rect = event.currentTarget.getBoundingClientRect();
   
-    // Calculate position relative to viewport
     setModalPosition({
       top: rect.bottom + 5,
-      left: rect.left - 130, // Position it to the left of the button
+      left: rect.left - 130,
       right: 'auto'
     });
   
-    setSelectedPhotoId(photoId);
+    setSelectedVideoId(videoId);
     setShowOptionsModal(true);
   };
 
-  const handleVideoClick = (video) => {
-    if (!video.locked) {
-      console.log('Play video:', video.id);
-      // Add your video player logic here
-    }
+  const formatDuration = (seconds) => {
+    if (!seconds) return '0:00';
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const formatViews = (views) => {
-    if (views >= 1000) {
-      return `${(views / 1000).toFixed(1)}k`;
-    }
-    return views.toString();
-  };
+  if (loading) {
+    return (
+      <div className="min-h-[400px] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+      </div>
+    );
+  }
+
+  if (videos.length === 0) {
+    return (
+      <div className="min-h-[400px] flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-500">No videos yet</p>
+          <p className="text-gray-400 text-sm mt-2">Videos from your posts will appear here</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-6xl mx-auto p-4">
         {/* Video Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
-          {videos.map((video) => (
-            <div 
-              key={video.id} 
-              className="relative group overflow-hidden rounded-lg bg-gray-900 cursor-pointer"
-            >
-              {/* Video Thumbnail */}
-              <div className="aspect-[3/4] relative">
-                {/* <Image
-                  src={video.thumbnail}
-                  alt={`Video ${video.id}`}
-                  fill
-                  className="object-cover"
-                /> */}
-                <Image
-                  src="/img/lady.png"
-                  alt="lady"
-                  fill
-                  className="object-cover"
-                />
-                
-                {/* Video Overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                
-                {/* Play Button */}
-                {!video.locked && (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-2">
+          {videos.map((post) => {
+            const videoMedia = post.media?.find(m => m.media_type === 'video');
+            return (
+              <div 
+                key={post.id} 
+                className="relative group overflow-hidden rounded-lg bg-gray-900 cursor-pointer"
+              >
+                {/* Video Thumbnail */}
+                <div className="aspect-[9/16] relative">
+                  <img
+                    src={videoMedia?.thumbnail_url || videoMedia?.media_url || '/img/avatar.png'}
+                    alt={`Video ${post.id}`}
+                    className="w-full h-full object-cover"
+                  />
+                  
+                  {/* Video Overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                  
+                  {/* Play Button */}
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center group-hover:bg-white/30 transition-colors">
-                      <Play className="w-8 h-8 text-white fill-white ml-1" />
+                    <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center group-hover:bg-white/30 transition-colors">
+                      <Play className="w-6 h-6 text-white fill-white ml-1" />
                     </div>
                   </div>
-                )}
 
-                {/* Lock overlay for premium content */}
-                {video.locked && (
-                  <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
-                    <div className="text-center">
-                      <Lock className="w-10 h-10 text-white mb-2 mx-auto" />
-                      <p className="text-white font-medium">Premium Video</p>
-                      <p className="text-white/70 text-sm mt-1">Subscribe to watch</p>
+                  {/* Edit button */}
+                  <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button 
+                      onClick={(e) => handleThreeDotsClick(e, post.id)}
+                      className="w-8 h-8 bg-black/50 rounded-full flex items-center justify-center text-white hover:bg-black/70 transition-colors"
+                    >
+                      <PenLine className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {/* Video Info */}
+                  <div className="absolute bottom-0 left-0 right-0 p-2">
+                    {/* Duration */}
+                    <div className="flex items-center justify-between">
+                      {videoMedia?.duration && (
+                        <span className="text-white text-xs bg-black/50 px-1.5 py-0.5 rounded">
+                          {formatDuration(videoMedia.duration)}
+                        </span>
+                      )}
                     </div>
-                  </div>
-                )}
 
-                {/* Edit button */}
-                <div className="absolute top-2 right-2">
-                  <button 
-                    onClick={(e) => handleThreeDotsClick(e, video.id)}
-                    className="w-8 h-8 bg-black/50 rounded-full flex items-center justify-center text-white hover:bg-black/70 transition-colors"
-                  >
-                    <PenLine className="w-4 h-4" />
-                  </button>
-                </div>
-
-                {/* Video Info */}
-                <div className="absolute bottom-0 left-0 right-0 p-3">
-                  {/* Duration */}
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-white text-sm bg-black/50 px-2 py-1 rounded">
-                      {video.duration}
-                    </span>
-                    <span className="text-white text-sm">
-                      {formatViews(video.views)} views
-                    </span>
-                  </div>
-
-                  {/* Hover Actions */}
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                    <div className="flex justify-between items-center text-white">
-                      <div className="flex gap-3">
-                        <button className="hover:scale-110 transition-transform">
-                          <Heart className="w-5 h-5" />
-                        </button>
-                        <button className="hover:scale-110 transition-transform">
-                          <MessageCircle className="w-5 h-5" />
-                        </button>
+                    {/* Hover Actions */}
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity mt-2">
+                      <div className="flex items-center gap-3 text-white text-sm">
+                        <div className="flex items-center gap-1">
+                          <Heart className="w-4 h-4" />
+                          <span>{post.likes_count || 0}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <MessageCircle className="w-4 h-4" />
+                          <span>{post.comments_count || 0}</span>
+                        </div>
                       </div>
-                      <button className="hover:scale-110 transition-transform">
-                        <Share2 className="w-5 h-5" />
-                      </button>
                     </div>
                   </div>
-                </div>
-
-                {/* Video number badge */}
-                <div className="absolute top-2 left-2 w-8 h-8 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
-                  <span className="text-sm font-medium text-white">{video.id}</span>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
-        {/* Options Modal - You can import and use your existing PostOptionsModal here */}
+        {/* Options Modal */}
         <PostOptionsModal
           isOpen={showOptionsModal}
           onClose={() => setShowOptionsModal(false)}
           onEdit={() => {
-            console.log('Edit photo:', selectedPhotoId);
+            console.log('Edit video:', selectedVideoId);
           }}
           onDelete={() => {
-            console.log('Delete photo:', selectedPhotoId);
+            console.log('Delete video:', selectedVideoId);
           }}
           onMakeProfilePicture={() => {
-            console.log('Make profile picture:', selectedPhotoId);
+            console.log('Make thumbnail profile picture:', selectedVideoId);
           }}
           position={modalPosition}
         />
