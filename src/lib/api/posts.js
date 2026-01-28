@@ -36,8 +36,11 @@ export const postsApi = {
   },
 
   // Create text-only post - Backend: POST /posts
-  async createTextPost(content) {
-    const response = await api.post('/posts', { content });
+  // Backend expects: { caption, location, visibility }
+  async createTextPost(caption, location = null, visibility = 'public') {
+    const body = { caption, visibility };
+    if (location) body.location = location;
+    const response = await api.post('/posts', body);
     return response.data || response;
   },
 

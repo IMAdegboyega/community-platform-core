@@ -53,15 +53,13 @@ const NewPost = ({ onPostCreated = () => {} }) => {
       let response
 
       if (selectedFiles.length > 0) {
-        // Create post with media
-        const formData = new FormData()
-        formData.append('content', postContent)
-        selectedFiles.forEach((file, index) => {
-          formData.append('media', file)
-        })
-        response = await postsApi.createPost(formData)
+        // Create post with media - NOT SUPPORTED YET
+        // The backend doesn't have file upload capability
+        // For now, just create a text post
+        setError('Media upload is not supported yet. Creating text post only.')
+        response = await postsApi.createTextPost(postContent)
       } else {
-        // Create text-only post
+        // Create text-only post (backend expects 'caption' field)
         response = await postsApi.createTextPost(postContent)
       }
 
