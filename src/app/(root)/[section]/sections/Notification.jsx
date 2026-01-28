@@ -1,87 +1,122 @@
 'use client'
 
-import React, { useState } from 'react';
-import { ArrowLeft, Settings, Check, Trash2, MoreHorizontal } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ArrowLeft, Settings, Check, Trash2, MoreHorizontal, Loader2 } from 'lucide-react';
+import { notificationsApi } from '@/lib/api';
 
 const Notification = () => {
   const [activeFilter, setActiveFilter] = useState('All');
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      avatar: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=40&h=40&fit=crop&crop=face",
-      message: "You have received a welcome gift of 100 Token.",
-      timestamp: "May 17, 2022 at 10AM",
-      isRead: false,
-      type: 'reward'
-    },
-    {
-      id: 2,
-      avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=40&h=40&fit=crop&crop=face",
-      message: "John liked your photo.",
-      timestamp: "May 17, 2022 at 9AM",
-      isRead: false,
-      type: 'like'
-    },
-    {
-      id: 3,
-      avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=40&h=40&fit=crop&crop=face",
-      message: "Sarah started following you.",
-      timestamp: "May 16, 2022 at 8PM",
-      isRead: true,
-      type: 'follow'
-    },
-    {
-      id: 4,
-      avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face",
-      message: "Mike commented on your post: \"This is amazing!\"",
-      timestamp: "May 16, 2022 at 5PM",
-      isRead: true,
-      type: 'comment'
-    },
-    {
-      id: 5,
-      avatar: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=40&h=40&fit=crop&crop=face",
-      message: "You have received a tip of 50 Token from a subscriber.",
-      timestamp: "May 16, 2022 at 2PM",
-      isRead: true,
-      type: 'reward'
-    },
-    {
-      id: 6,
-      avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=40&h=40&fit=crop&crop=face",
-      message: "Emma mentioned you in a comment.",
-      timestamp: "May 15, 2022 at 11AM",
-      isRead: true,
-      type: 'mention'
-    }
-  ]);
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const filters = ['All', 'Unread', 'Likes', 'Comments', 'Follows'];
 
-  const markAllAsRead = () => {
-    setNotifications(notifications.map(n => ({ ...n, isRead: true })));
+  useEffect(() => {
+    fetchNotifications();
+    fetchUnreadCount();
+  }, []);
+
+  const fetchNotifications = async () => {
+    try {
+      setLoading(true);
+      const response = await notificationsApi.getNotifications(50, 0);
+      const notificationList = Array.isArray(response) ? response : [];
+      setNotifications(notificationList);
+      setError(null);
+    } catch (err) {
+      console.error('Failed to fetch notifications:', err);
+      setError(err.message || 'Failed to load notifications');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const markAsRead = (id) => {
-    setNotifications(notifications.map(n => 
-      n.id === id ? { ...n, isRead: true } : n
-    ));
+  const fetchUnreadCount = async () => {
+    try {
+      const response = await notificationsApi.getUnreadCount();
+      setUnreadCount(response.unread_count || 0);
+    } catch (err) {
+      console.error('Failed to fetch unread count:', err);
+    }
   };
 
-  const deleteNotification = (id) => {
-    setNotifications(notifications.filter(n => n.id !== id));
+  const markAllAsRead = async () => {
+    try {
+      await notificationsApi.markAllAsRead();
+      setNotifications(notifications.map(n => ({ ...n, is_read: true })));
+      setUnreadCount(0);
+    } catch (err) {
+      console.error('Failed to mark all as read:', err);
+    }
+  };
+
+  const markAsRead = async (id) => {
+    try {
+      await notificationsApi.markAsRead(id);
+      setNotifications(notifications.map(n => 
+        n.id === id ? { ...n, is_read: true } : n
+      ));
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch (err) {
+      console.error('Failed to mark as read:', err);
+    }
+  };
+
+  const deleteNotification = async (id) => {
+    try {
+      await notificationsApi.deleteNotification(id);
+      const notification = notifications.find(n => n.id === id);
+      setNotifications(notifications.filter(n => n.id !== id));
+      if (notification && !notification.is_read) {
+        setUnreadCount(prev => Math.max(0, prev - 1));
+      }
+    } catch (err) {
+      console.error('Failed to delete notification:', err);
+    }
   };
 
   const filteredNotifications = notifications.filter(n => {
     if (activeFilter === 'All') return true;
-    if (activeFilter === 'Unread') return !n.isRead;
+    if (activeFilter === 'Unread') return !n.is_read;
     if (activeFilter === 'Likes') return n.type === 'like';
     if (activeFilter === 'Comments') return n.type === 'comment';
     if (activeFilter === 'Follows') return n.type === 'follow';
     return true;
   });
 
-  const unreadCount = notifications.filter(n => !n.isRead).length;
+  const formatTimestamp = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+    });
+  };
+
+  if (loading) {
+    return (
+      <div className="max-w-5xl mx-auto min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 text-purple-500 animate-spin mx-auto" />
+          <p className="text-gray-500 mt-4">Loading notifications...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-5xl mx-auto min-h-screen bg-gray-50">
@@ -104,7 +139,8 @@ const Notification = () => {
         </div>
         <button 
           onClick={markAllAsRead}
-          className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700 font-medium"
+          disabled={unreadCount === 0}
+          className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700 font-medium disabled:text-gray-400 disabled:cursor-not-allowed"
         >
           <Check className="w-4 h-4" />
           Mark all as read
@@ -174,22 +210,37 @@ const Notification = () => {
         </div>
       )}
 
+      {/* Error State */}
+      {error && (
+        <div className="bg-red-50 p-4 text-center">
+          <p className="text-red-600 text-sm">{error}</p>
+          <button 
+            onClick={fetchNotifications}
+            className="mt-2 text-sm text-blue-600 hover:underline"
+          >
+            Try again
+          </button>
+        </div>
+      )}
+
       {/* Notification List */}
-      <div className="bg-white md:my-4 md:rounded-lg ">
+      <div className="bg-white md:my-4 md:rounded-lg">
         {filteredNotifications.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 px-4">
             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
               <Check className="w-8 h-8 text-gray-400" />
             </div>
-            <p className="text-gray-500 text-center">No notifications</p>
+            <p className="text-gray-500 text-center">
+              {activeFilter === 'All' ? 'No notifications yet' : `No ${activeFilter.toLowerCase()} notifications`}
+            </p>
           </div>
         ) : (
           filteredNotifications.map((notification) => (
             <div 
               key={notification.id} 
-              onClick={() => markAsRead(notification.id)}
+              onClick={() => !notification.is_read && markAsRead(notification.id)}
               className={`flex items-start gap-3 p-4 border-b border-gray-100 last:border-0 cursor-pointer transition-colors ${
-                !notification.isRead 
+                !notification.is_read 
                   ? 'bg-blue-50 hover:bg-blue-100 border-l-4 border-l-blue-600' 
                   : 'hover:bg-gray-50'
               }`}
@@ -197,11 +248,11 @@ const Notification = () => {
               {/* Avatar */}
               <div className="relative flex-shrink-0">
                 <img
-                  src={notification.avatar}
+                  src={notification.actor?.profile_picture || notification.avatar || '/img/avatar.png'}
                   alt="User avatar"
                   className="w-12 h-12 md:w-10 md:h-10 rounded-full object-cover"
                 />
-                {!notification.isRead && (
+                {!notification.is_read && (
                   <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-600 rounded-full border-2 border-white md:hidden"></div>
                 )}
               </div>
@@ -209,18 +260,18 @@ const Notification = () => {
               {/* Content */}
               <div className="flex-1 min-w-0">
                 <p className={`text-sm leading-relaxed ${
-                  !notification.isRead ? 'text-gray-900 font-medium' : 'text-gray-700'
+                  !notification.is_read ? 'text-gray-900 font-medium' : 'text-gray-700'
                 }`}>
-                  {notification.message}
+                  {notification.message || notification.content}
                 </p>
                 <p className="text-xs text-gray-500 mt-1">
-                  {notification.timestamp}
+                  {formatTimestamp(notification.created_at)}
                 </p>
               </div>
 
               {/* Actions - Desktop only */}
               <div className="hidden md:flex items-center gap-2">
-                {!notification.isRead && (
+                {!notification.is_read && (
                   <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
                 )}
                 <button 

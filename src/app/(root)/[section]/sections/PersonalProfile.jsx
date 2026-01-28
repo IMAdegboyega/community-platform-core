@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import MyWall from '@/components/PersonalProfile/MyWall';
 import Photos from '@/components/PersonalProfile/Photos';
@@ -9,46 +9,121 @@ import Followers from '@/components/PersonalProfile/Followers';
 import Following from '@/components/PersonalProfile/Following';
 import Subscribers from '@/components/PersonalProfile/Subscribers';
 import EditProfile from '@/components/PersonalProfile/EditProfile';
-import { ArrowLeft, Share, Settings } from 'lucide-react';
+import { ArrowLeft, Share, Settings, Loader2 } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { authApi } from '@/lib/api';
 
 const PersonalProfile = () => {
+  const { user: authUser, refreshUser } = useAuth();
   const [activeTab, setActiveTab] = useState('My Wall');
   const [isOnline, setIsOnline] = useState(true);
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [showBio, setShowBio] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [profileData, setProfileData] = useState(null);
 
   const tabs = ['My Wall', 'Photos', 'Videos', 'Followers', 'Following', 'Subscribers'];
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        setLoading(true);
+        // Get fresh user data from API
+        const userData = await authApi.getMe();
+        setProfileData(userData);
+        setIsOnline(userData.is_online || false);
+      } catch (error) {
+        console.error('Failed to fetch profile:', error);
+        // Fall back to auth context user
+        if (authUser) {
+          setProfileData(authUser);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfile();
+  }, [authUser]);
+
+  // Use profile data or fall back to auth user
+  const user = profileData || authUser || {};
+  
+  // Extract user info with fallbacks
+  const displayName = user.display_name || user.username || 'User';
+  const username = user.username || 'username';
+  const profilePicture = user.profile_picture || '/img/avatar.png';
+  const bio = user.bio || '';
+  const postsCount = user.posts_count || 0;
+  const followersCount = user.followers_count || 0;
+  const followingCount = user.following_count || 0;
+
+  // Profile stats from user data
+  const profileStats = {
+    profession: user.profession || 'Not set',
+    language: user.language || 'Not set', 
+    hobby: user.hobby || 'Not set',
+    height: user.height || 'Not set',
+    city: user.city || 'Not set',
+    age: user.age ? String(user.age) : 'Not set'
+  };
+
+  const formatCount = (count) => {
+    if (count >= 1000000) {
+      return (count / 1000000).toFixed(1) + 'M';
+    }
+    if (count >= 1000) {
+      return (count / 1000).toFixed(1) + 'k';
+    }
+    return count.toString();
+  };
+
+  const handleEditProfileClose = async () => {
+    setShowEditProfile(false);
+    // Refresh user data after editing
+    try {
+      const userData = await authApi.getMe();
+      setProfileData(userData);
+      if (refreshUser) {
+        refreshUser();
+      }
+    } catch (error) {
+      console.error('Failed to refresh profile:', error);
+    }
+  };
 
   const renderTabContent = () => {
     switch (activeTab) {
       case 'My Wall':
-        return <MyWall/>;
+        return <MyWall userId={user.id} />;
       case 'Photos':
-        return <Photos/>;
+        return <Photos userId={user.id} />;
       case 'Videos':
-        return <Videos/>;
+        return <Videos userId={user.id} />;
       case 'Followers':
-        return <Followers/>;
+        return <Followers userId={user.id} />;
       case 'Following':
-        return <Following/>;
+        return <Following userId={user.id} />;
       case 'Subscribers':
-        return <Subscribers/>;
+        return <Subscribers userId={user.id} />;
       default:
-        return <MyWall/>;
+        return <MyWall userId={user.id} />;
     }
   };
-  
-  const profileStats = {
-    profession: 'Data Analyst',
-    language: 'English', 
-    hobby: 'Music',
-    height: '5\'3"',
-    city: 'Lagos',
-    age: '20'
-  };
+
+  if (loading) {
+    return (
+      <div className="max-w-5xl mx-auto min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 text-purple-500 animate-spin mx-auto" />
+          <p className="text-gray-500 mt-4">Loading profile...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (showEditProfile) {
-    return <EditProfile onBack={() => setShowEditProfile(false)} />;
+    return <EditProfile onBack={handleEditProfileClose} userData={user} />;
   }
 
   return (
@@ -68,11 +143,9 @@ const PersonalProfile = () => {
             {/* Profile Picture */}
             <div className="relative mb-4">
               <div className="w-24 h-24 rounded-full bg-gray-300 overflow-hidden">
-                <Image 
-                  src="/img/lady.png" 
-                  alt="Profile" 
-                  width={96}
-                  height={96}
+                <img 
+                  src={profilePicture} 
+                  alt={displayName} 
                   className="w-full h-full object-cover"
                 />
               </div>
@@ -82,37 +155,41 @@ const PersonalProfile = () => {
             </div>
 
             {/* Name & Username */}
-            <h1 className="text-xl font-semibold text-gray-900">Elena Paul</h1>
-            <p className="text-gray-500 text-sm mb-2">@elena</p>
+            <h1 className="text-xl font-semibold text-gray-900">{displayName}</h1>
+            <p className="text-gray-500 text-sm mb-2">@{username}</p>
 
             {/* Stats Row */}
             <div className="flex items-center justify-center gap-6 py-4">
               <div className="text-center">
-                <p className="font-semibold text-gray-900">128</p>
+                <p className="font-semibold text-gray-900">{formatCount(postsCount)}</p>
                 <p className="text-xs text-gray-500">Posts</p>
               </div>
               <div className="text-center">
-                <p className="font-semibold text-gray-900">14.2k</p>
+                <p className="font-semibold text-gray-900">{formatCount(followersCount)}</p>
                 <p className="text-xs text-gray-500">Followers</p>
               </div>
               <div className="text-center">
-                <p className="font-semibold text-gray-900">326</p>
+                <p className="font-semibold text-gray-900">{formatCount(followingCount)}</p>
                 <p className="text-xs text-gray-500">Following</p>
               </div>
             </div>
 
             {/* Bio - Collapsible on mobile */}
-            <div className="w-full px-2 mb-4">
-              <p className={`text-gray-700 text-sm ${!showBio ? 'line-clamp-2' : ''}`}>
-                Hello bro! DM nudies for you, DM if you wanna talk, selling contents, custom videos, Feeds, Bisexual, FreeEnds
-              </p>
-              <button 
-                onClick={() => setShowBio(!showBio)}
-                className="text-blue-600 text-sm mt-1"
-              >
-                {showBio ? 'Show less' : 'Show more'}
-              </button>
-            </div>
+            {bio && (
+              <div className="w-full px-2 mb-4">
+                <p className={`text-gray-700 text-sm ${!showBio ? 'line-clamp-2' : ''}`}>
+                  {bio}
+                </p>
+                {bio.length > 100 && (
+                  <button 
+                    onClick={() => setShowBio(!showBio)}
+                    className="text-blue-600 text-sm mt-1"
+                  >
+                    {showBio ? 'Show less' : 'Show more'}
+                  </button>
+                )}
+              </div>
+            )}
 
             {/* Action Buttons */}
             <div className="flex items-center gap-3 w-full">
@@ -151,11 +228,9 @@ const PersonalProfile = () => {
               {/* Profile Picture */}
               <div className="relative">
                 <div className="w-24 h-24 lg:w-28 lg:h-28 rounded-full bg-gray-300 overflow-hidden">
-                  <Image 
-                    src="/img/lady.png" 
-                    alt="Profile" 
-                    width={112}
-                    height={112}
+                  <img 
+                    src={profilePicture} 
+                    alt={displayName} 
                     className="w-full h-full object-cover"
                   />
                 </div>
@@ -166,11 +241,29 @@ const PersonalProfile = () => {
 
               {/* Profile Info */}
               <div className="flex-1">
-                <h1 className="text-2xl font-semibold text-gray-900">Elena Paul</h1>
-                <p className="text-gray-500 text-sm">@elena</p>
-                <p className="text-gray-700 mt-2 max-w-md">
-                  Hello bro! DM nudies for you, DM if you wanna talk, selling contents, custom videos, Feeds, Bisexual, FreeEnds
-                </p>
+                <h1 className="text-2xl font-semibold text-gray-900">{displayName}</h1>
+                <p className="text-gray-500 text-sm">@{username}</p>
+                
+                {/* Stats */}
+                <div className="flex items-center gap-6 mt-2">
+                  <div>
+                    <span className="font-semibold text-gray-900">{formatCount(postsCount)}</span>
+                    <span className="text-gray-500 ml-1">posts</span>
+                  </div>
+                  <div>
+                    <span className="font-semibold text-gray-900">{formatCount(followersCount)}</span>
+                    <span className="text-gray-500 ml-1">followers</span>
+                  </div>
+                  <div>
+                    <span className="font-semibold text-gray-900">{formatCount(followingCount)}</span>
+                    <span className="text-gray-500 ml-1">following</span>
+                  </div>
+                </div>
+                
+                {bio && (
+                  <p className="text-gray-700 mt-2 max-w-md">{bio}</p>
+                )}
+                
                 <div className="flex gap-3 mt-4">
                   <button 
                     onClick={() => setShowEditProfile(true)} 

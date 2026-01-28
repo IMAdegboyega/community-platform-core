@@ -1,33 +1,30 @@
-// Auth API
+// Auth API - Endpoints matched to backend routes
 import { api } from './client';
 
 export const authApi = {
-  // Register a new user
+  // Register a new user - Backend: POST /auth/register
   async register(email, username, password, phone = null) {
-    const response = await api.post('/auth/register', {
-      email,
-      username,
-      password,
-      phone,
-    }, { includeAuth: false });
+    const body = { email, username, password };
+    if (phone) body.phone = phone;
+    
+    const response = await api.post('/auth/register', body, { includeAuth: false });
     return response.data || response;
   },
 
-  // Login user
+  // Login user - Backend: POST /auth/login
   async login(identifier, password, deviceInfo = null) {
-    const response = await api.post('/auth/login', {
-      identifier,
-      password,
-      device_info: deviceInfo,
-    }, { includeAuth: false });
+    const body = { identifier, password };
+    if (deviceInfo) body.device_info = deviceInfo;
     
-    // Response structure: { success: true, data: { access_token, refresh_token, user } }
+    const response = await api.post('/auth/login', body, { includeAuth: false });
+    
+    // Response structure: { success: true, data: { access_token, refresh_token, user, expires_in } }
     const loginData = response.data || response;
     
     if (loginData && loginData.access_token) {
       api.setToken(loginData.access_token);
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('refresh_token', loginData.refresh_token);
+      api.setRefreshToken(loginData.refresh_token);
+      if (typeof window !== 'undefined' && loginData.user) {
         localStorage.setItem('user', JSON.stringify(loginData.user));
       }
     }
@@ -35,21 +32,28 @@ export const authApi = {
     return loginData;
   },
 
-  // Logout
+  // Logout - Backend: POST /auth/logout
   async logout() {
     try {
       await api.post('/auth/logout', {});
+    } catch (error) {
+      // Ignore logout errors, still clear local auth
+      console.warn('Logout request failed:', error);
     } finally {
       api.clearAuth();
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('refresh_token');
-        localStorage.removeItem('user');
-      }
     }
   },
 
-  // Refresh token
+  // Logout from all devices - Backend: POST /auth/logout-all
+  async logoutAll() {
+    try {
+      await api.post('/auth/logout-all', {});
+    } finally {
+      api.clearAuth();
+    }
+  },
+
+  // Refresh token - Backend: POST /auth/refresh
   async refreshToken() {
     if (typeof window === 'undefined') return null;
     
@@ -63,48 +67,58 @@ export const authApi = {
     const data = response.data || response;
     if (data && data.access_token) {
       api.setToken(data.access_token);
-      localStorage.setItem('refresh_token', data.refresh_token);
+      api.setRefreshToken(data.refresh_token);
+      if (data.user) {
+        localStorage.setItem('user', JSON.stringify(data.user));
+      }
     }
 
     return data;
   },
 
-  // Get current user
+  // Get current user - Backend: GET /auth/me
   async getMe() {
     const response = await api.get('/auth/me');
     return response.data || response;
   },
 
-  // Update password
-  async updatePassword(currentPassword, newPassword) {
-    const response = await api.put('/auth/password', {
+  // Change password - Backend: POST /auth/change-password (NOT PUT /auth/password!)
+  async changePassword(currentPassword, newPassword) {
+    const response = await api.post('/auth/change-password', {
       current_password: currentPassword,
       new_password: newPassword,
     });
     return response.data || response;
   },
 
-  // Request password reset
-  async requestPasswordReset(email) {
-    const response = await api.post('/auth/password/reset', { email }, { includeAuth: false });
+  // Get active sessions - Backend: GET /auth/sessions
+  async getSessions() {
+    const response = await api.get('/auth/sessions');
     return response.data || response;
   },
 
-  // Verify email
-  async verifyEmail(token) {
-    const response = await api.post('/auth/verify-email', { token });
+  // Revoke a specific session - Backend: DELETE /auth/sessions/{id}
+  async revokeSession(sessionId) {
+    const response = await api.delete(`/auth/sessions/${sessionId}`);
     return response.data || response;
   },
 
-  // Check if authenticated
+  // Check if authenticated (local check)
   isAuthenticated() {
     return api.isAuthenticated();
   },
 
-  // Get stored user
+  // Get stored user from localStorage
   getStoredUser() {
     if (typeof window === 'undefined') return null;
     const user = localStorage.getItem('user');
     return user ? JSON.parse(user) : null;
+  },
+
+  // Update stored user in localStorage
+  setStoredUser(user) {
+    if (typeof window !== 'undefined' && user) {
+      localStorage.setItem('user', JSON.stringify(user));
+    }
   },
 };

@@ -1,112 +1,111 @@
-// Posts API
+// Posts API - Endpoints matched to backend routes
 import { api } from './client';
 
 export const postsApi = {
-  // Get feed
-  async getFeed(page = 1, limit = 20) {
-    const response = await api.get(`/posts/feed?page=${page}&limit=${limit}`);
+  // Get feed - Backend: GET /feed
+  async getFeed(type = '', limit = 20, offset = 0) {
+    const params = new URLSearchParams();
+    if (type) params.append('type', type);
+    if (limit) params.append('limit', limit.toString());
+    if (offset) params.append('offset', offset.toString());
+    const queryString = params.toString();
+    const response = await api.get(`/feed${queryString ? '?' + queryString : ''}`);
     return response.data || response;
   },
 
-  // Get post by ID
+  // Get post by ID - Backend: GET /posts/{id}
   async getPost(postId) {
     const response = await api.get(`/posts/${postId}`);
     return response.data || response;
   },
 
-  // Get user's posts
-  async getUserPosts(userId, page = 1, limit = 20) {
-    const response = await api.get(`/posts/user/${userId}?page=${page}&limit=${limit}`);
+  // Get user's posts - Backend: GET /users/{id}/posts
+  async getUserPosts(userId, limit = 20, offset = 0) {
+    const params = new URLSearchParams();
+    if (limit) params.append('limit', limit.toString());
+    if (offset) params.append('offset', offset.toString());
+    const queryString = params.toString();
+    const response = await api.get(`/users/${userId}/posts${queryString ? '?' + queryString : ''}`);
     return response.data || response;
   },
 
-  // Create post
+  // Create post with media - Backend: POST /posts
   async createPost(formData) {
     const response = await api.uploadFile('/posts', formData);
     return response.data || response;
   },
 
-  // Create text-only post
+  // Create text-only post - Backend: POST /posts
   async createTextPost(content) {
     const response = await api.post('/posts', { content });
     return response.data || response;
   },
 
-  // Update post
+  // Update post - Backend: PUT /posts/{id}
   async updatePost(postId, data) {
     const response = await api.put(`/posts/${postId}`, data);
     return response.data || response;
   },
 
-  // Delete post
+  // Delete post - Backend: DELETE /posts/{id}
   async deletePost(postId) {
     const response = await api.delete(`/posts/${postId}`);
     return response.data || response;
   },
 
-  // Like post
+  // Like post - Backend: POST /posts/{id}/like
   async likePost(postId) {
     const response = await api.post(`/posts/${postId}/like`, {});
     return response.data || response;
   },
 
-  // Unlike post
+  // Unlike post - Backend: POST /posts/{id}/unlike (NOT DELETE!)
   async unlikePost(postId) {
-    const response = await api.delete(`/posts/${postId}/like`);
+    const response = await api.post(`/posts/${postId}/unlike`, {});
     return response.data || response;
   },
 
-  // Get post likes
-  async getPostLikes(postId, page = 1, limit = 20) {
-    const response = await api.get(`/posts/${postId}/likes?page=${page}&limit=${limit}`);
-    return response.data || response;
-  },
-
-  // Add comment
-  async addComment(postId, content) {
-    const response = await api.post(`/posts/${postId}/comments`, { content });
-    return response.data || response;
-  },
-
-  // Get comments
-  async getComments(postId, page = 1, limit = 20) {
-    const response = await api.get(`/posts/${postId}/comments?page=${page}&limit=${limit}`);
-    return response.data || response;
-  },
-
-  // Delete comment
-  async deleteComment(postId, commentId) {
-    const response = await api.delete(`/posts/${postId}/comments/${commentId}`);
-    return response.data || response;
-  },
-
-  // Save post
+  // Save post - Backend: POST /posts/{id}/save
   async savePost(postId) {
     const response = await api.post(`/posts/${postId}/save`, {});
     return response.data || response;
   },
 
-  // Unsave post
+  // Unsave post - Backend: POST /posts/{id}/unsave (NOT DELETE!)
   async unsavePost(postId) {
-    const response = await api.delete(`/posts/${postId}/save`);
+    const response = await api.post(`/posts/${postId}/unsave`, {});
     return response.data || response;
   },
 
-  // Get saved posts
-  async getSavedPosts(page = 1, limit = 20) {
-    const response = await api.get(`/posts/saved?page=${page}&limit=${limit}`);
+  // Get saved posts - Backend: GET /posts/saved
+  async getSavedPosts(limit = 20, offset = 0) {
+    const params = new URLSearchParams();
+    if (limit) params.append('limit', limit.toString());
+    if (offset) params.append('offset', offset.toString());
+    const queryString = params.toString();
+    const response = await api.get(`/posts/saved${queryString ? '?' + queryString : ''}`);
     return response.data || response;
   },
 
-  // Report post
-  async reportPost(postId, reason) {
-    const response = await api.post(`/posts/${postId}/report`, { reason });
+  // Add comment - Backend: POST /posts/{id}/comments
+  async addComment(postId, content) {
+    const response = await api.post(`/posts/${postId}/comments`, { content });
     return response.data || response;
   },
 
-  // Share post
-  async sharePost(postId, platform) {
-    const response = await api.post(`/posts/${postId}/share`, { platform });
+  // Get comments - Backend: GET /posts/{id}/comments
+  async getComments(postId, limit = 20, offset = 0) {
+    const params = new URLSearchParams();
+    if (limit) params.append('limit', limit.toString());
+    if (offset) params.append('offset', offset.toString());
+    const queryString = params.toString();
+    const response = await api.get(`/posts/${postId}/comments${queryString ? '?' + queryString : ''}`);
+    return response.data || response;
+  },
+
+  // Delete comment - Backend: DELETE /comments/{id} (NOT /posts/{postId}/comments/{commentId}!)
+  async deleteComment(commentId) {
+    const response = await api.delete(`/comments/${commentId}`);
     return response.data || response;
   },
 };

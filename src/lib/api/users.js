@@ -1,106 +1,93 @@
-// Users API
+// Users API - Endpoints matched to backend routes
 import { api } from './client';
 
 export const usersApi = {
-  // Get user by ID
+  // Get user by ID - Backend: GET /users/{id}
   async getUser(userId) {
     const response = await api.get(`/users/${userId}`);
     return response.data || response;
   },
 
-  // Get user by username
+  // Get user by username - Backend: GET /users/username/{username}
   async getUserByUsername(username) {
     const response = await api.get(`/users/username/${username}`);
     return response.data || response;
   },
 
-  // Update profile
-  async updateProfile(data) {
-    const response = await api.put('/users/profile', data);
+  // Search users - Backend: GET /users/search?q=query
+  async searchUsers(query, limit = 20, offset = 0) {
+    const params = new URLSearchParams();
+    params.append('q', query);
+    if (limit) params.append('limit', limit.toString());
+    if (offset) params.append('offset', offset.toString());
+    const response = await api.get(`/users/search?${params.toString()}`);
     return response.data || response;
   },
 
-  // Update profile picture
-  async updateProfilePicture(formData) {
-    const response = await api.uploadFile('/users/profile/picture', formData);
-    return response.data || response;
-  },
-
-  // Update cover photo
-  async updateCoverPhoto(formData) {
-    const response = await api.uploadFile('/users/profile/cover', formData);
-    return response.data || response;
-  },
-
-  // Search users
-  async searchUsers(query, page = 1, limit = 20) {
-    const response = await api.get(`/users/search?q=${encodeURIComponent(query)}&page=${page}&limit=${limit}`);
-    return response.data || response;
-  },
-
-  // Get suggested users
+  // Get suggested users - Backend: GET /users/suggestions
   async getSuggestions(limit = 10) {
     const response = await api.get(`/users/suggestions?limit=${limit}`);
     return response.data || response;
   },
 
-  // Follow user
+  // Follow user - Backend: POST /users/{id}/follow
   async follow(userId) {
     const response = await api.post(`/users/${userId}/follow`, {});
     return response.data || response;
   },
 
-  // Unfollow user
+  // Unfollow user - Backend: POST /users/{id}/unfollow (NOT DELETE!)
   async unfollow(userId) {
-    const response = await api.delete(`/users/${userId}/follow`);
+    const response = await api.post(`/users/${userId}/unfollow`, {});
     return response.data || response;
   },
 
-  // Get followers
-  async getFollowers(userId, page = 1, limit = 20) {
-    const response = await api.get(`/users/${userId}/followers?page=${page}&limit=${limit}`);
-    return response.data || response;
-  },
-
-  // Get following
-  async getFollowing(userId, page = 1, limit = 20) {
-    const response = await api.get(`/users/${userId}/following?page=${page}&limit=${limit}`);
-    return response.data || response;
-  },
-
-  // Check if following
+  // Check if following - Backend: GET /users/{id}/follow-status
   async isFollowing(userId) {
-    const response = await api.get(`/users/${userId}/following/check`);
+    const response = await api.get(`/users/${userId}/follow-status`);
     return response.data || response;
   },
 
-  // Update privacy settings
-  async updatePrivacySettings(settings) {
-    const response = await api.put('/users/settings/privacy', settings);
+  // Get followers - Backend: GET /users/{id}/followers
+  async getFollowers(userId, limit = 20, offset = 0) {
+    const params = new URLSearchParams();
+    if (limit) params.append('limit', limit.toString());
+    if (offset) params.append('offset', offset.toString());
+    const queryString = params.toString();
+    const response = await api.get(`/users/${userId}/followers${queryString ? '?' + queryString : ''}`);
     return response.data || response;
   },
 
-  // Update notification settings
-  async updateNotificationSettings(settings) {
-    const response = await api.put('/users/settings/notifications', settings);
+  // Get following - Backend: GET /users/{id}/following
+  async getFollowing(userId, limit = 20, offset = 0) {
+    const params = new URLSearchParams();
+    if (limit) params.append('limit', limit.toString());
+    if (offset) params.append('offset', offset.toString());
+    const queryString = params.toString();
+    const response = await api.get(`/users/${userId}/following${queryString ? '?' + queryString : ''}`);
     return response.data || response;
   },
 
-  // Block user
-  async blockUser(userId) {
-    const response = await api.post(`/users/${userId}/block`, {});
+  // Block user - Backend: POST /users/{id}/block
+  async blockUser(userId, reason = null) {
+    const body = reason ? { reason } : {};
+    const response = await api.post(`/users/${userId}/block`, body);
     return response.data || response;
   },
 
-  // Unblock user
+  // Unblock user - Backend: POST /users/{id}/unblock (NOT DELETE!)
   async unblockUser(userId) {
-    const response = await api.delete(`/users/${userId}/block`);
+    const response = await api.post(`/users/${userId}/unblock`, {});
     return response.data || response;
   },
 
-  // Report user
-  async reportUser(userId, reason) {
-    const response = await api.post(`/users/${userId}/report`, { reason });
+  // Get blocked users - Backend: GET /users/blocked
+  async getBlockedUsers(limit = 20, offset = 0) {
+    const params = new URLSearchParams();
+    if (limit) params.append('limit', limit.toString());
+    if (offset) params.append('offset', offset.toString());
+    const queryString = params.toString();
+    const response = await api.get(`/users/blocked${queryString ? '?' + queryString : ''}`);
     return response.data || response;
   },
 };

@@ -1,22 +1,62 @@
-import React from 'react'
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
+'use client'
+
+import React, { useState, useEffect, useRef } from 'react'
+import { Plus } from 'lucide-react'
 import Image from 'next/image'
+import { storiesApi } from '@/lib/api'
+import { useAuth } from '@/hooks/useAuth'
 
 const Stories = ({
-  stories = [
-    { id: 1, name: 'Your Story', image: '/api/placeholder/60/60', isOwn: true },
-    { id: 2, name: 'Extacy', image: '/api/placeholder/60/60' },
-    { id: 3, name: 'Valerie', image: '/api/placeholder/60/60' },
-    { id: 4, name: 'Celine', image: '/api/placeholder/60/60' },
-    { id: 5, name: 'Roman', image: '/api/placeholder/60/60' },
-    { id: 6, name: 'Roman', image: '/api/placeholder/60/60' },
-    { id: 7, name: 'Nice', image: '/api/placeholder/60/60' },
-    { id: 8, name: 'May', image: '/api/placeholder/60/60' },
-  ],
   onStoryClick = () => {},
   onAddStory = () => {},
 }) => {
-  const scrollContainer = React.useRef(null)
+  const { user } = useAuth()
+  const [stories, setStories] = useState([])
+  const [loading, setLoading] = useState(true)
+  const scrollContainer = useRef(null)
+
+  useEffect(() => {
+    const fetchStories = async () => {
+      try {
+        setLoading(true)
+        const response = await storiesApi.getStoriesFeed()
+        const storyData = Array.isArray(response) ? response : []
+        
+        // Add "Your Story" at the beginning
+        const yourStory = {
+          id: 'your-story',
+          name: 'Your Story',
+          image: user?.profile_picture || '/img/avatar.png',
+          isOwn: true,
+        }
+        
+        // Transform API data to component format
+        const transformedStories = storyData.map(story => ({
+          id: story.id,
+          name: story.user?.display_name || story.user?.username || 'User',
+          image: story.user?.profile_picture || '/img/avatar.png',
+          isOwn: false,
+          hasUnviewed: !story.is_viewed,
+          storyData: story,
+        }))
+
+        setStories([yourStory, ...transformedStories])
+      } catch (error) {
+        console.error('Failed to fetch stories:', error)
+        // Show only "Your Story" on error
+        setStories([{
+          id: 'your-story',
+          name: 'Your Story',
+          image: user?.profile_picture || '/img/avatar.png',
+          isOwn: true,
+        }])
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchStories()
+  }, [user])
 
   const scroll = (direction) => {
     if (scrollContainer.current) {
@@ -26,6 +66,37 @@ const Stories = ({
         behavior: 'smooth',
       })
     }
+  }
+
+  const handleStoryClick = async (story) => {
+    if (story.isOwn) {
+      onAddStory()
+      return
+    }
+
+    // Mark as viewed
+    try {
+      await storiesApi.viewStory(story.id)
+    } catch (error) {
+      console.error('Failed to mark story as viewed:', error)
+    }
+
+    onStoryClick(story.storyData || story)
+  }
+
+  if (loading) {
+    return (
+      <div className="relative p-4">
+        <div className="flex gap-4 md:gap-8 overflow-x-auto scrollbar-hide px-2 md:px-8">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="flex flex-col items-center gap-2 flex-shrink-0">
+              <div className="w-16 h-16 rounded-full bg-gray-200 animate-pulse" />
+              <div className="w-12 h-3 bg-gray-200 rounded animate-pulse" />
+            </div>
+          ))}
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -53,7 +124,7 @@ const Stories = ({
           <div
             key={story.id}
             className='flex flex-col items-center gap-2 cursor-pointer group flex-shrink-0'
-            onClick={() => (story.isOwn ? onAddStory() : onStoryClick(story))}
+            onClick={() => handleStoryClick(story)}
           >
             {/* Profile Image with Ring */}
             <div className='relative'>
@@ -61,18 +132,15 @@ const Stories = ({
                 className={`w-16 h-16 rounded-full p-0.5 ${
                   story.isOwn
                     ? 'bg-gray-300'
-                    : 'bg-gradient-to-tr from-pink-500 via-red-500 to-yellow-500'
+                    : story.hasUnviewed
+                    ? 'bg-gradient-to-tr from-pink-500 via-red-500 to-yellow-500'
+                    : 'bg-gray-300'
                 }`}
               >
                 <div className='w-full h-full bg-white rounded-full p-0.5'>
-                  {/* <img
+                  <Image
                     src={story.image}
                     alt={story.name}
-                    className='w-full h-full rounded-full object-cover'
-                  /> */}
-                  <Image
-                    src='/img/avatar.png'
-                    alt='avatar'
                     width={60}
                     height={60}
                     className='w-full h-full rounded-full object-cover'

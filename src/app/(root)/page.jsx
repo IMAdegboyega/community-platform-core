@@ -4,27 +4,28 @@ import NewPost from '@/components/NewPost'
 import Posts from '@/components/Posts'
 import Recommendations from '@/components/Recommendations'
 import Stories from '@/components/stories'
-import React from 'react'
+import React, { useState, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 
 const HomePage = () => {
-  const handlePost = (content) => {
-    console.log('New post:', content)
-  }
+  const router = useRouter()
+  const [feedKey, setFeedKey] = useState(0)
 
-  const handleImageUpload = () => {
-    console.log('Image upload clicked')
-  }
-
-  const handleCamera = () => {
-    console.log('Camera clicked')
-  }
+  // Refresh the feed by changing the key (forces Posts component to remount)
+  const handlePostCreated = useCallback((newPost) => {
+    setFeedKey(prev => prev + 1)
+  }, [])
 
   const handleUserClick = (user) => {
-    console.log('User clicked:', user)
+    // Navigate to user profile
+    if (user.username) {
+      router.push(`/profile/${user.username}`)
+    }
   }
 
   const handleSaveUser = (user) => {
-    console.log('Save user:', user)
+    // Follow action is handled inside Recommendations component
+    console.log('User follow toggled:', user.username)
   }
 
   return (
@@ -45,14 +46,10 @@ const HomePage = () => {
         {/* Left Content - Post Creation and Feed */}
         <div className="lg:col-span-2 space-y-4 md:space-y-6">
           {/* Create Post Section */}
-          <NewPost
-            onPost={handlePost}
-            onImageClick={handleImageUpload}
-            onCameraClick={handleCamera}
-          />
+          <NewPost onPostCreated={handlePostCreated} />
 
-          {/* Feed Area */}
-          <Posts />
+          {/* Feed Area - key prop forces remount when changed */}
+          <Posts key={feedKey} />
         </div>
 
         {/* Right Sidebar - Desktop Recommendations */}
