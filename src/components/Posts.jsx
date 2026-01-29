@@ -3,14 +3,20 @@
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Heart, MessageCircle, Share2, Bookmark, MoreHorizontal, Loader2 } from 'lucide-react'
+import { Heart, MessageCircle, Share2, Bookmark, MoreHorizontal, Loader2, Send } from 'lucide-react'
 import { postsApi } from '@/lib/api'
+import { useAuth } from '@/hooks/useAuth'
 
 const PostCard = ({ post }) => {
+  const { user: authUser } = useAuth()
   const [isLiked, setIsLiked] = useState(post.is_liked || false)
   const [isSaved, setIsSaved] = useState(post.is_saved || false)
   const [likesCount, setLikesCount] = useState(post.likes_count || 0)
+  const [commentsCount, setCommentsCount] = useState(post.comments_count || 0)
   const [isLoading, setIsLoading] = useState(false)
+  const [showCommentInput, setShowCommentInput] = useState(false)
+  const [commentText, setCommentText] = useState('')
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false)
 
   const handleLike = async () => {
     if (isLoading) return
@@ -60,6 +66,23 @@ const PostCard = ({ post }) => {
     }
   }
 
+  const handleSubmitComment = async (e) => {
+    e.preventDefault()
+    if (!commentText.trim() || isSubmittingComment) return
+
+    setIsSubmittingComment(true)
+    try {
+      await postsApi.addComment(post.id, commentText.trim())
+      setCommentText('')
+      setCommentsCount(prev => prev + 1)
+      setShowCommentInput(false)
+    } catch (error) {
+      console.error('Failed to add comment:', error)
+    } finally {
+      setIsSubmittingComment(false)
+    }
+  }
+
   const formatDate = (dateString) => {
     if (!dateString) return ''
     const date = new Date(dateString)
@@ -80,7 +103,11 @@ const PostCard = ({ post }) => {
   const username = post.user?.username || post.username || 'Unknown'
   const displayName = post.user?.display_name || post.user?.username || post.display_name || username
   const profilePicture = post.user?.profile_picture || post.profile_picture || '/img/avatar.png'
-  const mediaUrls = post.media_urls || post.media || []
+  const caption = post.caption || post.content || ''
+  
+  // Handle media - could be array of objects or array of URLs
+  const mediaItems = post.media || []
+  const mediaUrls = mediaItems.map(m => typeof m === 'string' ? m : m.media_url).filter(Boolean)
 
   return (
     <div className="bg-white rounded-lg shadow-sm overflow-hidden">
@@ -104,10 +131,10 @@ const PostCard = ({ post }) => {
         </button>
       </div>
 
-      {/* Post Content */}
-      {post.content && (
+      {/* Post Content/Caption */}
+      {caption && (
         <div className="px-4 pb-3">
-          <p className="text-gray-800 text-sm whitespace-pre-wrap">{post.content}</p>
+          <p className="text-gray-800 text-sm whitespace-pre-wrap">{caption}</p>
         </div>
       )}
 
@@ -147,9 +174,12 @@ const PostCard = ({ post }) => {
                 className={`w-6 h-6 transition-colors ${isLiked ? 'fill-red-500 text-red-500' : 'text-gray-700'}`} 
               />
             </button>
-            <Link href={`/post/${post.id}`} className="flex items-center gap-1 hover:opacity-70">
+            <button 
+              onClick={() => setShowCommentInput(!showCommentInput)}
+              className="flex items-center gap-1 hover:opacity-70"
+            >
               <MessageCircle className="w-6 h-6 text-gray-700" />
-            </Link>
+            </button>
             <button className="flex items-center gap-1 hover:opacity-70">
               <Share2 className="w-6 h-6 text-gray-700" />
             </button>
@@ -173,10 +203,43 @@ const PostCard = ({ post }) => {
         )}
 
         {/* Comments Count */}
-        {post.comments_count > 0 && (
-          <Link href={`/post/${post.id}`} className="text-sm text-gray-500 hover:text-gray-700">
-            View all {post.comments_count} comments
-          </Link>
+        {commentsCount > 0 && (
+          <button 
+            onClick={() => setShowCommentInput(!showCommentInput)}
+            className="text-sm text-gray-500 hover:text-gray-700"
+          >
+            View all {commentsCount} comments
+          </button>
+        )}
+
+        {/* Comment Input */}
+        {showCommentInput && (
+          <form onSubmit={handleSubmitComment} className="mt-3 flex items-center gap-2 border-t pt-3">
+            <img
+              src={authUser?.profile_picture || '/img/avatar.png'}
+              alt="Your avatar"
+              className="w-8 h-8 rounded-full object-cover"
+            />
+            <input
+              type="text"
+              placeholder="Add a comment..."
+              value={commentText}
+              onChange={(e) => setCommentText(e.target.value)}
+              className="flex-1 text-sm outline-none bg-transparent"
+              disabled={isSubmittingComment}
+            />
+            <button
+              type="submit"
+              disabled={!commentText.trim() || isSubmittingComment}
+              className="text-blue-600 font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSubmittingComment ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Send className="w-5 h-5" />
+              )}
+            </button>
+          </form>
         )}
       </div>
     </div>

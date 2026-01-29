@@ -18,8 +18,8 @@ const Recommendations = ({
     const fetchSuggestions = async () => {
       try {
         setLoading(true)
-        const response = await usersApi.getSuggestions(10)
-        const users = Array.isArray(response) ? response : []
+        const response = await usersApi.getSuggestions(20) // Get more users
+        const users = Array.isArray(response) ? response : (response?.data || [])
         setRecommendations(users)
         // Initialize following state
         const initialState = {}
@@ -62,6 +62,28 @@ const Recommendations = ({
         [user.id]: isCurrentlyFollowing
       }))
     }
+  }
+
+  // Get button text based on follow state
+  const getButtonText = (user) => {
+    if (followingState[user.id]) {
+      return 'Following'
+    }
+    if (user.is_following_you) {
+      return 'Follow Back'
+    }
+    return 'Follow'
+  }
+
+  // Get button style based on follow state
+  const getButtonStyle = (user) => {
+    if (followingState[user.id]) {
+      return 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+    }
+    if (user.is_following_you) {
+      return 'bg-blue-600 text-white hover:bg-blue-700 ring-2 ring-blue-300'
+    }
+    return 'bg-blue-600 text-white hover:bg-blue-700'
   }
 
   // Show only first 6 on desktop unless "See All" is clicked
@@ -126,23 +148,28 @@ const Recommendations = ({
                         </svg>
                       </div>
                     )}
+                    {/* Badge for users who follow you */}
+                    {user.is_following_you && !followingState[user.id] && (
+                      <div className="absolute -top-1 -left-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
+                    )}
                   </div>
 
                   {/* Name */}
                   <p className="text-sm font-medium text-gray-900 text-center truncate w-full">
                     {user.display_name || user.username}
                   </p>
+                  
+                  {/* "Follows you" label */}
+                  {user.is_following_you && !followingState[user.id] && (
+                    <p className="text-xs text-gray-500">Follows you</p>
+                  )}
 
                   {/* Follow Button */}
                   <button 
                     onClick={() => handleFollowToggle(user)}
-                    className={`mt-2 px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors w-full ${
-                      followingState[user.id]
-                        ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' 
-                        : 'bg-blue-600 text-white hover:bg-blue-700'
-                    }`}
+                    className={`mt-2 px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors w-full ${getButtonStyle(user)}`}
                   >
-                    {followingState[user.id] ? 'Following' : 'Follow'}
+                    {getButtonText(user)}
                   </button>
                 </div>
               </div>
@@ -172,6 +199,7 @@ const Recommendations = ({
               name={user.display_name || user.username}
               isVerified={user.is_verified}
               isSaved={followingState[user.id]}
+              isFollowingYou={user.is_following_you}
               onClick={() => onUserClick(user)}
               onSaveClick={() => handleFollowToggle(user)}
             />
