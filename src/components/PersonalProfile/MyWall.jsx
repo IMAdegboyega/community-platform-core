@@ -1,7 +1,6 @@
-import { Camera, Heart, MessageCircle, MoreVertical, Share2, Video, Loader2, Send, ChevronDown, ChevronUp } from 'lucide-react';
-import Image from 'next/image';
+import { Camera, Heart, MessageCircle, MoreVertical, Share2, Video, Loader2, Send, ChevronDown, ChevronUp, Trash2, X } from 'lucide-react';
 import Link from 'next/link';
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { postsApi } from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -17,6 +16,11 @@ const MyWall = ({ userId, onPostCreated }) => {
     const [loadingComments, setLoadingComments] = useState({});
     const [commentText, setCommentText] = useState({});
     const [submittingComment, setSubmittingComment] = useState({});
+    const [showOptionsMenu, setShowOptionsMenu] = useState(null);
+    const [deletingPost, setDeletingPost] = useState(null);
+    const [selectedImage, setSelectedImage] = useState(null);
+    const [imagePreview, setImagePreview] = useState(null);
+    const fileInputRef = useRef(null);
 
     useEffect(() => {
         const fetchPosts = async () => {
@@ -25,7 +29,6 @@ const MyWall = ({ userId, onPostCreated }) => {
             try {
                 setLoading(true);
                 const response = await postsApi.getUserPosts(userId);
-                // Handle both array response and object with data property
                 const postsData = Array.isArray(response) ? response : (response.data || response.posts || []);
                 setPosts(postsData);
             } catch (err) {
@@ -40,15 +43,44 @@ const MyWall = ({ userId, onPostCreated }) => {
         fetchPosts();
     }, [userId]);
 
+    const handleImageSelect = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setSelectedImage(file);
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setImagePreview(reader.result);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const removeSelectedImage = () => {
+        setSelectedImage(null);
+        setImagePreview(null);
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
+    };
+
     const handleCreatePost = async () => {
-        if (!newPostContent.trim()) return;
+        if (!newPostContent.trim() && !selectedImage) return;
         
         setIsPosting(true);
         try {
-            const response = await postsApi.createTextPost(newPostContent);
-            // Add new post to beginning of list with current user info
+            let response;
+            
+            if (selectedImage) {
+                const formData = new FormData();
+                formData.append('caption', newPostContent);
+                formData.append('visibility', 'public');
+                formData.append('media', selectedImage);
+                response = await postsApi.createPost(formData);
+            } else {
+                response = await postsApi.createTextPost(newPostContent);
+            }
+            
             const newPost = response.data || response;
-            // Ensure the post has user info
             newPost.user = newPost.user || {
                 id: authUser?.id,
                 username: authUser?.username,
@@ -57,8 +89,8 @@ const MyWall = ({ userId, onPostCreated }) => {
             };
             setPosts(prev => [newPost, ...prev]);
             setNewPostContent('');
+            removeSelectedImage();
             
-            // Notify parent to refresh profile stats
             if (onPostCreated) {
                 onPostCreated();
             }
@@ -66,6 +98,22 @@ const MyWall = ({ userId, onPostCreated }) => {
             console.error('Failed to create post:', err);
         } finally {
             setIsPosting(false);
+        }
+    };
+
+    const handleDeletePost = async (postId) => {
+        setDeletingPost(postId);
+        try {
+            await postsApi.deletePost(postId);
+            setPosts(prev => prev.filter(p => p.id !== postId));
+            if (onPostCreated) {
+                onPostCreated();
+            }
+        } catch (err) {
+            console.error('Failed to delete post:', err);
+        } finally {
+            setDeletingPost(null);
+            setShowOptionsMenu(null);
         }
     };
 
@@ -102,7 +150,6 @@ const MyWall = ({ userId, onPostCreated }) => {
             [postId]: !isExpanded
         }));
 
-        // Fetch comments if expanding and not already loaded
         if (!isExpanded && !comments[postId]) {
             setLoadingComments(prev => ({ ...prev, [postId]: true }));
             try {
@@ -126,7 +173,6 @@ const MyWall = ({ userId, onPostCreated }) => {
         try {
             const response = await postsApi.addComment(postId, text);
             const newComment = response.data || response;
-            // Add user info to the new comment
             newComment.user = newComment.user || {
                 id: authUser?.id,
                 username: authUser?.username,
@@ -140,7 +186,6 @@ const MyWall = ({ userId, onPostCreated }) => {
             }));
             setCommentText(prev => ({ ...prev, [postId]: '' }));
             
-            // Update comment count on the post
             setPosts(prev => prev.map(p => 
                 p.id === postId 
                     ? { ...p, comments_count: (p.comments_count || 0) + 1 }
@@ -170,9 +215,7 @@ const MyWall = ({ userId, onPostCreated }) => {
     };
 
     const userImage = authUser?.profile_picture || '/img/avatar.png';
-    const userName = authUser?.display_name || authUser?.username || 'User';
 
-    // Helper to get post author info (fallback to current user for own posts)
     const getPostAuthor = (post) => {
         return {
             username: post.user?.username || post.username || authUser?.username || 'Unknown',
@@ -201,17 +244,43 @@ const MyWall = ({ userId, onPostCreated }) => {
                     className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     rows={3}
                   />
+                  
+                  {imagePreview && (
+                    <div className="relative mt-3 inline-block">
+                      <img 
+                        src={imagePreview} 
+                        alt="Preview" 
+                        className="max-h-48 rounded-lg object-cover"
+                      />
+                      <button
+                        onClick={removeSelectedImage}
+                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+                  
                   <div className="flex justify-end items-center space-x-6 mt-3">
-                    <button className="text-gray-500 hover:text-gray-700"> 
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleImageSelect}
+                      accept="image/*"
+                      className="hidden"
+                    />
+                    <button 
+                      onClick={() => fileInputRef.current?.click()}
+                      className="text-gray-500 hover:text-blue-600 transition-colors"
+                    > 
                       <Camera className="w-5 h-5" />
                     </button>
-
                     <button className="text-gray-500 hover:text-gray-700">
                       <Video className="w-5 h-5" />
                     </button>
                     <button 
                       onClick={handleCreatePost}
-                      disabled={isPosting || !newPostContent.trim()}
+                      disabled={isPosting || (!newPostContent.trim() && !selectedImage)}
                       className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                     >
                       {isPosting && <Loader2 className="w-4 h-4 animate-spin" />}
@@ -222,7 +291,6 @@ const MyWall = ({ userId, onPostCreated }) => {
               </div>
             </div>
 
-            {/* Loading State */}
             {loading && (
               <div className="bg-white rounded-lg p-8 text-center">
                 <Loader2 className="w-8 h-8 text-blue-500 animate-spin mx-auto" />
@@ -230,30 +298,27 @@ const MyWall = ({ userId, onPostCreated }) => {
               </div>
             )}
 
-            {/* Error State */}
             {error && !loading && (
               <div className="bg-white rounded-lg p-8 text-center">
                 <p className="text-red-500">{error}</p>
               </div>
             )}
 
-            {/* Empty State */}
             {!loading && !error && posts.length === 0 && (
               <div className="bg-white rounded-lg p-8 text-center">
                 <p className="text-gray-500">No posts yet. Create your first post!</p>
               </div>
             )}
 
-            {/* Posts */}
             {!loading && posts.map((post) => {
               const author = getPostAuthor(post);
               const postComments = comments[post.id] || [];
               const isCommentsExpanded = expandedComments[post.id];
               const isLoadingComments = loadingComments[post.id];
+              const isOwnPost = post.user_id === authUser?.id || post.user?.id === authUser?.id;
 
               return (
-                <div key={post.id} className="bg-white rounded-lg">
-                  {/* Post Header */}
+                <div key={post.id} className="bg-white rounded-lg relative">
                   <div className="p-4 flex items-center justify-between">
                     <Link href={`/profile/${author.username}`} className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-gray-300 overflow-hidden">
@@ -268,19 +333,52 @@ const MyWall = ({ userId, onPostCreated }) => {
                         <p className="text-sm text-gray-500">{formatTimeAgo(post.created_at)}</p>
                       </div>
                     </Link>
-                    <button className="text-gray-400 hover:text-gray-600">
-                      <MoreVertical className="w-5 h-5" />
-                    </button>
+                    
+                    <div className="relative">
+                      <button 
+                        onClick={() => setShowOptionsMenu(showOptionsMenu === post.id ? null : post.id)}
+                        className="text-gray-400 hover:text-gray-600 p-2"
+                      >
+                        <MoreVertical className="w-5 h-5" />
+                      </button>
+                      
+                      {showOptionsMenu === post.id && (
+                        <>
+                          <div className="fixed inset-0 z-10" onClick={() => setShowOptionsMenu(null)} />
+                          <div className="absolute right-0 top-full mt-1 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20 min-w-[150px]">
+                            {isOwnPost && (
+                              <button
+                                onClick={() => handleDeletePost(post.id)}
+                                disabled={deletingPost === post.id}
+                                className="w-full flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 transition-colors text-left"
+                              >
+                                {deletingPost === post.id ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <Trash2 className="w-4 h-4" />
+                                )}
+                                Delete Post
+                              </button>
+                            )}
+                            <button
+                              onClick={() => setShowOptionsMenu(null)}
+                              className="w-full flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors text-left"
+                            >
+                              <Share2 className="w-4 h-4" />
+                              Share
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Post Content */}
                   {post.caption && (
                     <div className="px-4 pb-3">
                       <p className="text-gray-800">{post.caption}</p>
                     </div>
                   )}
 
-                  {/* Post Media */}
                   {post.media && post.media.length > 0 && (
                     <div className="bg-gray-100">
                       <img
@@ -291,7 +389,6 @@ const MyWall = ({ userId, onPostCreated }) => {
                     </div>
                   )}
 
-                  {/* Post Actions */}
                   <div className="p-4 flex items-center justify-between border-t border-gray-100">
                     <div className="flex gap-4">
                       <button 
@@ -315,16 +412,10 @@ const MyWall = ({ userId, onPostCreated }) => {
                     </div>
                   </div>
 
-                  {/* Comments Section */}
                   {isCommentsExpanded && (
                     <div className="border-t border-gray-100">
-                      {/* Comment Input */}
                       <div className="p-4 flex items-center gap-3">
-                        <img
-                          src={userImage}
-                          alt="Your avatar"
-                          className="w-8 h-8 rounded-full object-cover"
-                        />
+                        <img src={userImage} alt="Your avatar" className="w-8 h-8 rounded-full object-cover" />
                         <input
                           type="text"
                           placeholder="Add a comment..."
@@ -339,15 +430,10 @@ const MyWall = ({ userId, onPostCreated }) => {
                           disabled={!commentText[post.id]?.trim() || submittingComment[post.id]}
                           className="text-blue-600 disabled:opacity-50"
                         >
-                          {submittingComment[post.id] ? (
-                            <Loader2 className="w-5 h-5 animate-spin" />
-                          ) : (
-                            <Send className="w-5 h-5" />
-                          )}
+                          {submittingComment[post.id] ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
                         </button>
                       </div>
 
-                      {/* Comments List */}
                       <div className="px-4 pb-4 space-y-3 max-h-64 overflow-y-auto">
                         {isLoadingComments ? (
                           <div className="flex items-center justify-center py-4">
@@ -367,10 +453,7 @@ const MyWall = ({ userId, onPostCreated }) => {
                               </Link>
                               <div className="flex-1 bg-gray-50 rounded-lg px-3 py-2">
                                 <div className="flex items-center gap-2">
-                                  <Link 
-                                    href={`/profile/${comment.user?.username || 'unknown'}`}
-                                    className="font-medium text-sm text-gray-900 hover:underline"
-                                  >
+                                  <Link href={`/profile/${comment.user?.username || 'unknown'}`} className="font-medium text-sm text-gray-900 hover:underline">
                                     {comment.user?.display_name || comment.user?.username || 'Unknown'}
                                   </Link>
                                   <span className="text-xs text-gray-500">{formatTimeAgo(comment.created_at)}</span>

@@ -90,4 +90,16 @@ export const usersApi = {
     const response = await api.get(`/users/blocked${queryString ? '?' + queryString : ''}`);
     return response.data || response;
   },
+
+  // Update user profile - Backend: PUT /users/profile
+  async updateProfile(profileData) {
+    const response = await api.put('/users/profile', profileData);
+    return response.data || response;
+  },
+
+  // Upload profile picture - Backend: POST /users/profile/picture (if backend supports it)
+  async uploadProfilePicture(formData) {
+    const response = await api.uploadFile('/users/profile/picture', formData);
+    return response.data || response;
+  },
 };
