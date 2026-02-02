@@ -95,7 +95,7 @@ const PersonalProfile = () => {
   const renderTabContent = () => {
     switch (activeTab) {
       case 'My Wall':
-        return <MyWall userId={user.id} />;
+        return <MyWall userId={user.id} onPostCreated={handlePostCreated} />;
       case 'Photos':
         return <Photos userId={user.id} />;
       case 'Videos':
@@ -107,7 +107,17 @@ const PersonalProfile = () => {
       case 'Subscribers':
         return <Subscribers userId={user.id} />;
       default:
-        return <MyWall userId={user.id} />;
+        return <MyWall userId={user.id} onPostCreated={handlePostCreated} />;
+    }
+  };
+
+  // Callback when a new post is created - refresh profile to get updated counts
+  const handlePostCreated = async () => {
+    try {
+      const userData = await authApi.getMe();
+      setProfileData(userData);
+    } catch (error) {
+      console.error('Failed to refresh profile:', error);
     }
   };
 

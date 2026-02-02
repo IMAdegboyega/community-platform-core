@@ -1,78 +1,169 @@
+import React, { useState, useEffect } from 'react';
+import { MoreVertical, UserMinus, MessageCircle, Loader2, Users } from 'lucide-react';
+import Link from 'next/link';
+import { usersApi } from '@/lib/api';
+import { useRouter } from 'next/navigation';
 
-
-import React, { useState } from 'react';
-import { MoreVertical, UserPlus, UserMinus, MessageCircle } from 'lucide-react';
-import Image from 'next/image';
-import { FollowingPopup } from './FloatyModal';
-
-const Following = () => {
-  const [Following, setFollowing] = useState([
-    { id: 1, name: 'Elena', username: '@elena', avatar: '/img/lady.png', isFollowing: false },
-    { id: 2, name: 'Elena', username: '@elena2', avatar: '/img/lady.png', isFollowing: true },
-    { id: 3, name: 'Elena', username: '@elena3', avatar: '/img/lady.png', isFollowing: false },
-    { id: 4, name: 'Elena', username: '@elena4', avatar: '/img/lady.png', isFollowing: true },
-    { id: 5, name: 'Elena', username: '@elena5', avatar: '/img/lady.png', isFollowing: false },
-    { id: 6, name: 'Elena', username: '@elena6', avatar: '/img/lady.png', isFollowing: false },
-    { id: 7, name: 'Elena', username: '@elena7', avatar: '/img/lady.png', isFollowing: true },
-    { id: 8, name: 'Elena', username: '@elena8', avatar: '/img/lady.png', isFollowing: false },
-  ]);
-
+const Following = ({ userId }) => {
+  const router = useRouter();
+  const [following, setFollowing] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [showOptionsModal, setShowOptionsModal] = useState(false);
-  const [selectedFollowing, setSelectedFollowing] = useState(null);
-  const [modalPosition, setModalPosition] = useState({ top: 0, right: 0 });
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [modalPosition, setModalPosition] = useState({ top: 0, left: 0 });
+  const [unfollowingIds, setUnfollowingIds] = useState(new Set());
 
-  const handleOptionsClick = (event, Following) => {
+  useEffect(() => {
+    const fetchFollowing = async () => {
+      if (!userId) return;
+      
+      try {
+        setLoading(true);
+        const response = await usersApi.getFollowing(userId, 50, 0);
+        const followingData = Array.isArray(response) ? response : (response.data || response.following || []);
+        setFollowing(followingData);
+        setError(null);
+      } catch (err) {
+        console.error('Failed to fetch following:', err);
+        setError('Failed to load following');
+        setFollowing([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchFollowing();
+  }, [userId]);
+
+  const handleOptionsClick = (event, user) => {
     event.stopPropagation();
     const rect = event.currentTarget.getBoundingClientRect();
   
-    // Calculate position relative to viewport
     setModalPosition({
       top: rect.bottom + 5,
-      left: rect.left - 130, // Position it to the left of the button
-      right: 'auto'
+      left: Math.max(10, rect.left - 130),
     });
   
-    setSelectedFollowing(Following);
+    setSelectedUser(user);
     setShowOptionsModal(true);
   };
 
-  const handleFollowToggle = (FollowingId) => {
-    setFollowing(Following.map(Following => 
-      Following.id === FollowingId 
-        ? { ...Following, isFollowing: !Following.isFollowing }
-        : Following
-    ));
+  const handleUnfollow = async (followingUserId) => {
+    setUnfollowingIds(prev => new Set([...prev, followingUserId]));
+    
+    try {
+      await usersApi.unfollow(followingUserId);
+      // Remove from list after successful unfollow
+      setFollowing(prev => prev.filter(f => f.id !== followingUserId));
+    } catch (err) {
+      console.error('Failed to unfollow:', err);
+    } finally {
+      setUnfollowingIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(followingUserId);
+        return newSet;
+      });
+    }
+    
+    setShowOptionsModal(false);
   };
 
+  const handleMessage = (user) => {
+    console.log('Message:', user);
+    setShowOptionsModal(false);
+  };
+
+  const handleBlock = async (user) => {
+    try {
+      await usersApi.blockUser(user.id);
+      // Remove from list
+      setFollowing(prev => prev.filter(f => f.id !== user.id));
+    } catch (err) {
+      console.error('Failed to block user:', err);
+    }
+    setShowOptionsModal(false);
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-[300px] bg-white rounded-lg flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 text-blue-500 animate-spin mx-auto" />
+          <p className="text-gray-500 mt-2">Loading following...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-[300px] bg-white rounded-lg flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-500">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (following.length === 0) {
+    return (
+      <div className="min-h-[300px] bg-white rounded-lg flex items-center justify-center">
+        <div className="text-center">
+          <Users className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+          <p className="text-gray-500">Not following anyone yet</p>
+          <p className="text-gray-400 text-sm">Find people to follow in the Community section</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-white">
+    <div className="bg-white rounded-lg">
       <div className="max-w-2xl mx-auto">
         {/* Following List */}
         <div className="divide-y divide-gray-100">
-          {Following.map((Following) => (
+          {following.map((user) => (
             <div 
-              key={Following.id} 
+              key={user.id} 
               className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
             >
               {/* User Info */}
-              <div className="flex items-center gap-3">
+              <Link 
+                href={`/profile/${user.username}`}
+                className="flex items-center gap-3 flex-1"
+              >
                 <div className="relative w-12 h-12 rounded-full overflow-hidden bg-gray-200">
-                  <Image
-                    src={Following.avatar}
-                    alt={Following.name}
-                    fill
-                    className="object-cover"
+                  <img
+                    src={user.profile_picture || '/img/avatar.png'}
+                    alt={user.display_name || user.username}
+                    className="w-full h-full object-cover"
                   />
                 </div>
                 <div>
-                  <h3 className="font-medium text-gray-900">{Following.name}</h3>
-                  <p className="text-sm text-gray-500">{Following.username}</p>
+                  <h3 className="font-medium text-gray-900 hover:underline">
+                    {user.display_name || user.username}
+                  </h3>
+                  <p className="text-sm text-gray-500">@{user.username}</p>
                 </div>
-              </div>
+              </Link>
+
+              {/* Following Badge & Unfollow Button */}
+              <button
+                onClick={() => handleUnfollow(user.id)}
+                disabled={unfollowingIds.has(user.id)}
+                className="px-4 py-1.5 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-100 transition-colors mr-2 disabled:opacity-50"
+              >
+                {unfollowingIds.has(user.id) ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  'Following'
+                )}
+              </button>
 
               {/* Options Button */}
               <button
-                onClick={(e) => handleOptionsClick(e, Following)}
+                onClick={(e) => handleOptionsClick(e, user)}
                 className="p-2 hover:bg-gray-100 rounded-full transition-colors"
               >
                 <MoreVertical className="w-5 h-5 text-gray-400" />
@@ -82,11 +173,43 @@ const Following = () => {
         </div>
       </div>
 
-      <FollowingPopup
-        isOpen={showOptionsModal}
-        onClose={() => setShowOptionsModal(false)}
-        position={modalPosition}
-      />
+      {/* Options Modal */}
+      {showOptionsModal && selectedUser && (
+        <>
+          <div 
+            className="fixed inset-0 z-40"
+            onClick={() => setShowOptionsModal(false)}
+          />
+          <div 
+            className="fixed bg-white rounded-lg shadow-xl border border-gray-200 py-2 z-50 min-w-[200px]"
+            style={{
+              top: `${modalPosition.top}px`,
+              left: `${modalPosition.left}px`,
+            }}
+          >
+            <button
+              onClick={() => handleUnfollow(selectedUser.id)}
+              className="w-full flex items-center gap-3 px-4 py-2 hover:bg-gray-50 transition-colors text-left"
+            >
+              <UserMinus className="w-4 h-4 text-gray-600" />
+              <span className="text-gray-700">Unfollow</span>
+            </button>
+            <button
+              onClick={() => handleMessage(selectedUser)}
+              className="w-full flex items-center gap-3 px-4 py-2 hover:bg-gray-50 transition-colors text-left"
+            >
+              <MessageCircle className="w-4 h-4 text-gray-600" />
+              <span className="text-gray-700">Send Message</span>
+            </button>
+            <button
+              onClick={() => handleBlock(selectedUser)}
+              className="w-full flex items-center gap-3 px-4 py-2 hover:bg-gray-50 transition-colors text-left text-red-600"
+            >
+              <span>Block User</span>
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 };
