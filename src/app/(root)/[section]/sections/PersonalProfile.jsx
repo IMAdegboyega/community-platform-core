@@ -30,6 +30,10 @@ const PersonalProfile = () => {
         setLoading(true);
         // Get fresh user data from API
         const userData = await authApi.getMe();
+        console.log('Profile API response:', userData);
+        console.log('Posts count:', userData?.posts_count);
+        console.log('Followers count:', userData?.followers_count);
+        console.log('Following count:', userData?.following_count);
         setProfileData(userData);
         setIsOnline(userData.is_online || false);
       } catch (error) {

@@ -79,7 +79,10 @@ export const authApi = {
   // Get current user - Backend: GET /auth/me
   async getMe() {
     const response = await api.get('/auth/me');
-    return response.data || response;
+    console.log('Raw /auth/me response:', JSON.stringify(response, null, 2));
+    const userData = response.data || response;
+    console.log('Extracted user data:', JSON.stringify(userData, null, 2));
+    return userData;
   },
 
   // Change password - Backend: POST /auth/change-password (NOT PUT /auth/password!)
