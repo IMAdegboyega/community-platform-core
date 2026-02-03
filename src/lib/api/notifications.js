@@ -9,14 +9,12 @@ export const notificationsApi = {
     if (offset) params.append('offset', offset.toString());
     const queryString = params.toString();
     const response = await api.get(`/notifications${queryString ? '?' + queryString : ''}`);
-    console.log('notificationsApi.getNotifications - raw response:', JSON.stringify(response, null, 2));
     return response.data || response;
   },
 
   // Get unread count - Backend: GET /notifications/unread-count (NOT unread/count!)
   async getUnreadCount() {
     const response = await api.get('/notifications/unread-count');
-    console.log('notificationsApi.getUnreadCount - raw response:', response);
     return response.data || response;
   },
 

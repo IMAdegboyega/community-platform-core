@@ -1,76 +1,83 @@
-// Messaging API
+// Messaging API - Endpoints matched to backend routes
 import { api } from './client';
 
 export const messagingApi = {
-  // Get conversations
-  async getConversations(page = 1, limit = 20) {
-    const response = await api.get(`/messages/conversations?page=${page}&limit=${limit}`);
+  // Get all conversations - Backend: GET /conversations
+  async getConversations(limit = 20, offset = 0) {
+    const params = new URLSearchParams();
+    if (limit) params.append('limit', limit.toString());
+    if (offset) params.append('offset', offset.toString());
+    const queryString = params.toString();
+    const response = await api.get(`/conversations${queryString ? '?' + queryString : ''}`);
     return response.data || response;
   },
 
-  // Get or create conversation with user
-  async getOrCreateConversation(userId) {
-    const response = await api.post('/messages/conversations', { user_id: userId });
+  // Create conversation - Backend: POST /conversations
+  async createConversation(participantIds, name = null, isGroup = false) {
+    const body = { participant_ids: participantIds, is_group: isGroup };
+    if (name) body.name = name;
+    const response = await api.post('/conversations', body);
     return response.data || response;
   },
 
-  // Get messages in conversation
-  async getMessages(conversationId, page = 1, limit = 50) {
-    const response = await api.get(`/messages/conversations/${conversationId}/messages?page=${page}&limit=${limit}`);
+  // Get single conversation - Backend: GET /conversations/{id}
+  async getConversation(conversationId) {
+    const response = await api.get(`/conversations/${conversationId}`);
     return response.data || response;
   },
 
-  // Send message
-  async sendMessage(conversationId, content) {
-    const response = await api.post(`/messages/conversations/${conversationId}/messages`, { content });
+  // Get or create direct conversation - Backend: POST /conversations/direct/{user_id}
+  async getOrCreateDirect(userId) {
+    const response = await api.post(`/conversations/direct/${userId}`, {});
     return response.data || response;
   },
 
-  // Send message with media
-  async sendMediaMessage(conversationId, formData) {
-    const response = await api.uploadFile(`/messages/conversations/${conversationId}/messages/media`, formData);
+  // Leave conversation - Backend: POST /conversations/{id}/leave
+  async leaveConversation(conversationId) {
+    const response = await api.post(`/conversations/${conversationId}/leave`, {});
     return response.data || response;
   },
 
-  // Mark messages as read
-  async markAsRead(conversationId) {
-    const response = await api.post(`/messages/conversations/${conversationId}/read`, {});
+  // Get messages - Backend: GET /conversations/{id}/messages
+  async getMessages(conversationId, limit = 50, offset = 0) {
+    const params = new URLSearchParams();
+    if (limit) params.append('limit', limit.toString());
+    if (offset) params.append('offset', offset.toString());
+    const queryString = params.toString();
+    const response = await api.get(`/conversations/${conversationId}/messages${queryString ? '?' + queryString : ''}`);
     return response.data || response;
   },
 
-  // Delete message
-  async deleteMessage(conversationId, messageId) {
-    const response = await api.delete(`/messages/conversations/${conversationId}/messages/${messageId}`);
+  // Send message - Backend: POST /conversations/{id}/messages
+  async sendMessage(conversationId, content, messageType = 'text', mediaUrl = null) {
+    const body = { content, message_type: messageType };
+    if (mediaUrl) body.media_url = mediaUrl;
+    const response = await api.post(`/conversations/${conversationId}/messages`, body);
     return response.data || response;
   },
 
-  // Delete conversation
-  async deleteConversation(conversationId) {
-    const response = await api.delete(`/messages/conversations/${conversationId}`);
+  // Mark conversation as read - Backend: POST /conversations/{id}/read
+  async markAsRead(conversationId, messageId = null) {
+    const body = messageId ? { message_id: messageId } : {};
+    const response = await api.post(`/conversations/${conversationId}/read`, body);
     return response.data || response;
   },
 
-  // Get unread count
+  // Edit message - Backend: PUT /messages/{id}
+  async editMessage(messageId, content) {
+    const response = await api.put(`/messages/${messageId}`, { content });
+    return response.data || response;
+  },
+
+  // Delete message - Backend: DELETE /messages/{id}
+  async deleteMessage(messageId) {
+    const response = await api.delete(`/messages/${messageId}`);
+    return response.data || response;
+  },
+
+  // Get unread count - Backend: GET /messages/unread
   async getUnreadCount() {
-    const response = await api.get('/messages/unread/count');
-    return response.data || response;
-  },
-
-  // Mute conversation
-  async muteConversation(conversationId) {
-    const response = await api.post(`/messages/conversations/${conversationId}/mute`, {});
-    return response.data || response;
-  },
-
-  // Unmute conversation
-  async unmuteConversation(conversationId) {
-    const response = await api.delete(`/messages/conversations/${conversationId}/mute`);
-    return response.data || response;
-  },
-
-  // Block user in messages
-  async blockUserInMessages(userId) {
-    const response = await api.post(`/messages/block/${userId}`, {});
+    const response = await api.get('/messages/unread');
     return response.data || response;
   },
 };

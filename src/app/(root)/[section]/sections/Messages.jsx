@@ -1,103 +1,142 @@
 'use client'
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChatList } from '@/components/Messages/ChatList';
 import { ChatView } from '@/components/Messages/ChatView';
+import { messagingApi } from '@/lib/api';
+import { Loader2 } from 'lucide-react';
 
 const Messages = ({ onClose }) => {
-  const [selectedChat, setSelectedChat] = useState(null);
+  const [conversations, setConversations] = useState([]);
+  const [selectedConversation, setSelectedConversation] = useState(null);
+  const [messages, setMessages] = useState([]);
   const [showChatView, setShowChatView] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [messagesLoading, setMessagesLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  const chats = [
-    {
-      id: 1,
-      name: 'Amara',
-      lastMessage: "You really had me smiling all day with that voice note 😂.",
-      time: '08:22',
-      hasNewMessage: true
-    },
-    {
-      id: 2,
-      name: 'Liam',
-      lastMessage: "Still thinking about our convo last night. You've got a vibe, no lie.",
-      time: 'Yesterday',
-      hasNewMessage: false
-    },
-    {
-      id: 3,
-      name: 'Sophie',
-      lastMessage: "If we link up this weekend, I promise you won't regret it 😉.",
-      time: 'Wed',
-      hasNewMessage: true
-    },
-    {
-      id: 4,
-      name: 'Derek',
-      lastMessage: "Let's plan something chill. Drinks, good music, and just us.",
-      time: 'Mon',
-      hasNewMessage: false
-    },
-    {
-      id: 5,
-      name: 'Jade',
-      lastMessage: "I'm not usually this forward but... damn you've got my attention.",
-      time: 'Thurs',
-      hasNewMessage: false
-    },
-    {
-      id: 6,
-      name: 'Kemi',
-      lastMessage: "My weekend just cleared up 👀. Wanna come make it interesting?",
-      time: 'Sat',
-      hasNewMessage: true
-    },
-    {
-      id: 7,
-      name: 'Noah',
-      lastMessage: "I can't stop thinking about that one thing you said last night...",
-      time: 'Sun',
-      hasNewMessage: false
+  // Fetch conversations on mount
+  useEffect(() => {
+    fetchConversations();
+  }, []);
+
+  const fetchConversations = async () => {
+    try {
+      setLoading(true);
+      const response = await messagingApi.getConversations(20, 0);
+      const convList = Array.isArray(response) ? response : (response?.data || []);
+      setConversations(convList);
+      setError(null);
+    } catch (err) {
+      console.error('Failed to fetch conversations:', err);
+      setError('Failed to load conversations');
+    } finally {
+      setLoading(false);
     }
-  ];  
+  };
 
-  const messages = [
-    { id: 1, text: "Hey stranger, you disappeared on me 👀", time: '14:02', isMe: false },
-    { id: 2, text: "Haha my bad. Got caught up. What's up though?", time: '14:05', isMe: true },
-    { id: 3, text: "I was replaying your voice note, honestly. That accent? 😩", time: '14:06', isMe: false },
-    { id: 4, text: "Haha you like? I could send more, but only if you behave 😏", time: '14:07', isMe: true },
-    { id: 5, text: "Oh I'll behave… if that means I get more of *you*", time: '14:09', isMe: false },
-    { id: 6, text: "You're trouble 😅. But I'm here for it.", time: '14:10', isMe: true },
-    { id: 7, text: "Let's make plans then. Tonight? Or too soon?", time: '14:11', isMe: false }
-  ];
+  const fetchMessages = async (conversationId) => {
+    try {
+      setMessagesLoading(true);
+      const response = await messagingApi.getMessages(conversationId, 50, 0);
+      const msgList = Array.isArray(response) ? response : (response?.data || []);
+      setMessages(msgList);
+      // Mark conversation as read
+      await messagingApi.markAsRead(conversationId);
+    } catch (err) {
+      console.error('Failed to fetch messages:', err);
+    } finally {
+      setMessagesLoading(false);
+    }
+  };
 
-  const handleSelectChat = (index) => {
-    setSelectedChat(index);
+  const handleSelectConversation = (conversation) => {
+    setSelectedConversation(conversation);
     setShowChatView(true);
+    fetchMessages(conversation.id);
   };
 
   const handleCloseChatView = () => {
     setShowChatView(false);
+    setSelectedConversation(null);
+    setMessages([]);
   };
+
+  const handleSendMessage = async (content) => {
+    if (!selectedConversation || !content.trim()) return;
+    
+    try {
+      const newMessage = await messagingApi.sendMessage(selectedConversation.id, content);
+      setMessages(prev => [...prev, newMessage]);
+      // Update last message in conversation list
+      setConversations(prev => prev.map(conv => 
+        conv.id === selectedConversation.id 
+          ? { ...conv, last_message: newMessage, updated_at: new Date().toISOString() }
+          : conv
+      ));
+    } catch (err) {
+      console.error('Failed to send message:', err);
+    }
+  };
+
+  const handleStartConversation = async (userId) => {
+    try {
+      const conversation = await messagingApi.getOrCreateDirect(userId);
+      // Add to conversations list if not already there
+      setConversations(prev => {
+        const exists = prev.find(c => c.id === conversation.id);
+        if (exists) return prev;
+        return [conversation, ...prev];
+      });
+      handleSelectConversation(conversation);
+    } catch (err) {
+      console.error('Failed to create conversation:', err);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex h-full w-full bg-gray-50 items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 text-blue-500 animate-spin mx-auto" />
+          <p className="text-gray-500 mt-4">Loading conversations...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-full w-full bg-gray-50">
       {/* ChatList - hidden on mobile when chat is open, full width on mobile */}
       <div className={`w-full md:w-auto ${showChatView ? 'hidden md:block' : 'block'}`}>
         <ChatList 
-          chats={chats} 
-          selectedChat={selectedChat} 
-          onSelectChat={handleSelectChat}
+          conversations={conversations}
+          selectedConversation={selectedConversation}
+          onSelectConversation={handleSelectConversation}
+          onStartConversation={handleStartConversation}
         />
       </div>
       
       {/* ChatView - full screen on mobile, side panel on tablet/desktop */}
-      {showChatView && selectedChat !== null && (
+      {showChatView && selectedConversation && (
         <div className="w-full md:flex-1">
           <ChatView 
-            chat={chats[selectedChat]} 
-            messages={messages} 
+            conversation={selectedConversation}
+            messages={messages}
+            messagesLoading={messagesLoading}
             onClose={handleCloseChatView}
+            onSendMessage={handleSendMessage}
           />
+        </div>
+      )}
+
+      {/* Empty state when no conversation selected on desktop */}
+      {!showChatView && (
+        <div className="hidden md:flex flex-1 items-center justify-center bg-gray-50">
+          <div className="text-center text-gray-500">
+            <p className="text-lg">Select a conversation to start messaging</p>
+            <p className="text-sm mt-2">Or start a new conversation with the + button</p>
+          </div>
         </div>
       )}
     </div>
