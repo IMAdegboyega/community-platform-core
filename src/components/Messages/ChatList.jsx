@@ -14,14 +14,15 @@ export const ChatList = ({ conversations, selectedConversation, onSelectConversa
     const filteredConversations = conversations.filter(conv => {
       if (!searchQuery) return true;
       const otherParticipant = getOtherParticipant(conv);
-      const name = otherParticipant?.display_name || otherParticipant?.username || '';
+      const name = otherParticipant?.user?.display_name || otherParticipant?.user?.username || '';
       return name.toLowerCase().includes(searchQuery.toLowerCase());
     });
 
     // Get the other participant in a direct conversation
     const getOtherParticipant = (conversation) => {
       if (!conversation.participants || !user) return null;
-      return conversation.participants.find(p => p.id !== user.id) || conversation.participants[0];
+      // participants have user_id, not id at top level
+      return conversation.participants.find(p => p.user_id !== user.id) || conversation.participants[0];
     };
 
     // Format timestamp
@@ -46,7 +47,8 @@ export const ChatList = ({ conversations, selectedConversation, onSelectConversa
     const getConversationName = (conversation) => {
       if (conversation.name) return conversation.name;
       const other = getOtherParticipant(conversation);
-      return other?.display_name || other?.username || 'Unknown';
+      // User details are nested in participant.user
+      return other?.user?.display_name || other?.user?.username || 'Unknown';
     };
 
     // Get last message preview
@@ -64,7 +66,8 @@ export const ChatList = ({ conversations, selectedConversation, onSelectConversa
     // Get avatar image
     const getAvatarImage = (conversation) => {
       const other = getOtherParticipant(conversation);
-      return other?.profile_picture;
+      // User details are nested in participant.user
+      return other?.user?.profile_picture;
     };
   
     return (

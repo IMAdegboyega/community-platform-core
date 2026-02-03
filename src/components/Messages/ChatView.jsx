@@ -55,14 +55,16 @@ export const ChatView = ({ conversation, messages, messagesLoading, onClose, onS
     // Get the other participant
     const getOtherParticipant = () => {
       if (!conversation?.participants || !user) return null;
-      return conversation.participants.find(p => p.id !== user.id) || conversation.participants[0];
+      // participants have user_id, not id at top level
+      return conversation.participants.find(p => p.user_id !== user.id) || conversation.participants[0];
     };
 
     // Get conversation display name
     const getConversationName = () => {
       if (conversation?.name) return conversation.name;
       const other = getOtherParticipant();
-      return other?.display_name || other?.username || 'Unknown';
+      // User details are nested in participant.user
+      return other?.user?.display_name || other?.user?.username || 'Unknown';
     };
 
     // Format message time
@@ -119,10 +121,10 @@ export const ChatView = ({ conversation, messages, messagesLoading, onClose, onS
           </button>
           
           {/* Avatar */}
-          <div className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center">
-            {getOtherParticipant()?.profile_picture ? (
+          <div className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center overflow-hidden">
+            {getOtherParticipant()?.user?.profile_picture ? (
               <img 
-                src={getOtherParticipant().profile_picture} 
+                src={getOtherParticipant().user.profile_picture} 
                 alt={getConversationName()}
                 className="w-10 h-10 rounded-full object-cover"
               />
