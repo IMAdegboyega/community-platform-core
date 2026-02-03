@@ -22,7 +22,8 @@ const Notification = () => {
     try {
       setLoading(true);
       const response = await notificationsApi.getNotifications(50, 0);
-      const notificationList = Array.isArray(response) ? response : [];
+      // Handle both array response and object with data property
+      const notificationList = Array.isArray(response) ? response : (response?.data || []);
       setNotifications(notificationList);
       setError(null);
     } catch (err) {
