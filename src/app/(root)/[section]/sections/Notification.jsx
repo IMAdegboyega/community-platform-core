@@ -21,9 +21,12 @@ const Notification = () => {
   const fetchNotifications = async () => {
     try {
       setLoading(true);
+      console.log('Fetching notifications...');
       const response = await notificationsApi.getNotifications(50, 0);
+      console.log('Notifications API raw response:', response);
       // Handle both array response and object with data property
       const notificationList = Array.isArray(response) ? response : (response?.data || []);
+      console.log('Notifications list:', notificationList);
       setNotifications(notificationList);
       setError(null);
     } catch (err) {
@@ -37,7 +40,8 @@ const Notification = () => {
   const fetchUnreadCount = async () => {
     try {
       const response = await notificationsApi.getUnreadCount();
-      setUnreadCount(response.unread_count || 0);
+      console.log('Unread count response:', response);
+      setUnreadCount(response.unread_count || response?.data?.unread_count || 0);
     } catch (err) {
       console.error('Failed to fetch unread count:', err);
     }
