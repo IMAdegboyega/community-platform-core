@@ -42,11 +42,11 @@ I work async and offer **small monthly retainers**.
 ---
 
 ## Demo
-**Live demo:** _add link_
+**Live demo:** https://community-platform-core.vercel.app/
 
 **Test credentials:**
-- Email: demo@example.com
-- Password: password123
+- Email: irebear2014@gmail.com
+- Password: Test123!!
 
 ---
 
@@ -92,5 +92,7 @@ The goal is **stability and reliability**, not feature bloat.
 If you need help maintaining or extending a system like this:
 
 **DM me**
+X - https://x.com/MarvelousTommy 
+Discord - https://discord.com/users/982737629743312896
 
 # community-platform-core
