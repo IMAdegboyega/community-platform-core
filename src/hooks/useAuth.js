@@ -45,7 +45,7 @@ export function AuthProvider({ children }) {
       const userData = await authApi.getMe();
       setUser(userData);
       if (typeof window !== 'undefined') {
-        localStorage.setItem('user', JSON.stringify(userData));
+        sessionStorage.setItem('user', JSON.stringify(userData));
       }
       return userData;
     } catch (error) {

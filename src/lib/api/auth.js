@@ -25,7 +25,7 @@ export const authApi = {
       api.setToken(loginData.access_token);
       api.setRefreshToken(loginData.refresh_token);
       if (typeof window !== 'undefined' && loginData.user) {
-        localStorage.setItem('user', JSON.stringify(loginData.user));
+        sessionStorage.setItem('user', JSON.stringify(loginData.user));
       }
     }
     
@@ -57,7 +57,7 @@ export const authApi = {
   async refreshToken() {
     if (typeof window === 'undefined') return null;
     
-    const refreshToken = localStorage.getItem('refresh_token');
+    const refreshToken = sessionStorage.getItem('refresh_token');
     if (!refreshToken) return null;
 
     const response = await api.post('/auth/refresh', {
@@ -69,7 +69,7 @@ export const authApi = {
       api.setToken(data.access_token);
       api.setRefreshToken(data.refresh_token);
       if (data.user) {
-        localStorage.setItem('user', JSON.stringify(data.user));
+        sessionStorage.setItem('user', JSON.stringify(data.user));
       }
     }
 
@@ -79,9 +79,7 @@ export const authApi = {
   // Get current user - Backend: GET /auth/me
   async getMe() {
     const response = await api.get('/auth/me');
-    console.log('Raw /auth/me response:', JSON.stringify(response, null, 2));
     const userData = response.data || response;
-    console.log('Extracted user data:', JSON.stringify(userData, null, 2));
     return userData;
   },
 
@@ -111,17 +109,17 @@ export const authApi = {
     return api.isAuthenticated();
   },
 
-  // Get stored user from localStorage
+  // Get stored user from sessionStorage
   getStoredUser() {
     if (typeof window === 'undefined') return null;
-    const user = localStorage.getItem('user');
+    const user = sessionStorage.getItem('user');
     return user ? JSON.parse(user) : null;
   },
 
-  // Update stored user in localStorage
+  // Update stored user in sessionStorage
   setStoredUser(user) {
     if (typeof window !== 'undefined' && user) {
-      localStorage.setItem('user', JSON.stringify(user));
+      sessionStorage.setItem('user', JSON.stringify(user));
     }
   },
 };

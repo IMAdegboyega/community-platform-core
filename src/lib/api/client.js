@@ -1,44 +1,52 @@
 // API Client for Kiekky Backend
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
 
+// Use sessionStorage - tokens cleared when browser/tab closes (user must login each visit)
+const getStorage = () => typeof window !== 'undefined' ? sessionStorage : null;
+
 class ApiClient {
   constructor() {
     this.baseUrl = API_URL;
     this.token = null;
     this.refreshPromise = null; // Prevent multiple simultaneous refresh attempts
     
-    // Initialize token from localStorage on client side
-    if (typeof window !== 'undefined') {
-      this.token = localStorage.getItem('auth_token');
+    // Initialize token from sessionStorage on client side
+    const storage = getStorage();
+    if (storage) {
+      this.token = storage.getItem('auth_token');
     }
   }
 
   setToken(token) {
     this.token = token;
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('auth_token', token);
+    const storage = getStorage();
+    if (storage) {
+      storage.setItem('auth_token', token);
     }
   }
 
   setRefreshToken(refreshToken) {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('refresh_token', refreshToken);
+    const storage = getStorage();
+    if (storage) {
+      storage.setItem('refresh_token', refreshToken);
     }
   }
 
   getRefreshToken() {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('refresh_token');
+    const storage = getStorage();
+    if (storage) {
+      return storage.getItem('refresh_token');
     }
     return null;
   }
 
   clearAuth() {
     this.token = null;
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('auth_token');
-      localStorage.removeItem('refresh_token');
-      localStorage.removeItem('user');
+    const storage = getStorage();
+    if (storage) {
+      storage.removeItem('auth_token');
+      storage.removeItem('refresh_token');
+      storage.removeItem('user');
     }
   }
 
@@ -92,8 +100,9 @@ class ApiClient {
           if (tokenData.refresh_token) {
             this.setRefreshToken(tokenData.refresh_token);
           }
-          if (tokenData.user && typeof window !== 'undefined') {
-            localStorage.setItem('user', JSON.stringify(tokenData.user));
+          const storage = getStorage();
+          if (tokenData.user && storage) {
+            storage.setItem('user', JSON.stringify(tokenData.user));
           }
           return true;
         }
