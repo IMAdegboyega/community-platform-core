@@ -25,7 +25,7 @@ I build, fix, and **maintain systems like this**:
 - Dashboards & internal tools
 - Ongoing maintenance and bug fixes
 
-I work async and offer **small monthly retainers**.
+I work async and offer **small monthly retainers**, focusing on reliability, clear communication, and predictable delivery.
 
 ---
 
@@ -92,7 +92,7 @@ The goal is **stability and reliability**, not feature bloat.
 If you need help maintaining or extending a system like this:
 
 **DM me**
-X - https://x.com/MarvelousTommy 
+X - https://x.com/MarvelousTommy
 Discord - https://discord.com/users/982737629743312896
 
 # community-platform-core
