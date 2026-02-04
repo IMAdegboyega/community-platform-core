@@ -177,7 +177,7 @@ const AuthForm = ({ type }) => {
     // Success screen
     if (forgotPasswordStep === 'success') {
       return (
-        <div className="w-full max-w-md text-center">
+        <div className="w-full max-w-md text-center text-black">
           <div className="mb-8">
             <div className="w-20 h-20 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <svg className="w-10 h-10 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -203,7 +203,7 @@ const AuthForm = ({ type }) => {
     // Reset password screen
     if (forgotPasswordStep === 'reset') {
       return (
-        <div className="w-full max-w-md">
+        <div className="w-full max-w-md text-black">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Reset Password</h1>
           <p className="text-gray-600 mb-8">
             Please enter the new password for your account for<br />
@@ -290,7 +290,7 @@ const AuthForm = ({ type }) => {
 
     // Email input screen (default)
     return (
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-md text-black">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Forgotten Password</h1>
         <p className="text-gray-600 mb-8">
           Please enter the email of your account<br />
@@ -349,7 +349,7 @@ const AuthForm = ({ type }) => {
     // Show success screen if setup is complete
     if (accountSetupComplete) {
       return (
-        <div className="w-full max-w-md text-center">
+        <div className="w-full max-w-md text-center text-black">
           <div className="mb-8">
             <div className="w-20 h-20 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <svg className="w-10 h-10 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -374,7 +374,7 @@ const AuthForm = ({ type }) => {
     }
 
     return (
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-md text-black">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Account Set Up</h1>
         <p className="text-gray-600 mb-8">
           Provide additional info required before you can access our platform
@@ -488,7 +488,7 @@ const AuthForm = ({ type }) => {
   // Sign-up form
   if (type === 'sign-up') {
     return (
-      <div className="max-w-md max-h-full">
+      <div className="max-w-md max-h-full text-black">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Get Started</h1>
         <p className="text-gray-600 mb-6">Create an account to unlock amazing features</p>
         
@@ -689,7 +689,7 @@ const AuthForm = ({ type }) => {
   // Sign-in form (existing code)
 
   return (
-    <div className="w-full max-h-full p-6">
+    <div className="w-full max-h-full p-6 text-black">
       <h1 className="text-3xl font-bold text-gray-900 mb-6">Welcome back</h1>
       
       {/* Tab Selector */}
