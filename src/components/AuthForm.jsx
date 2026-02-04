@@ -488,7 +488,7 @@ const AuthForm = ({ type }) => {
   // Sign-up form
   if (type === 'sign-up') {
     return (
-      <div className="max-w-md max-h-full">
+      <div className="max-w-md max-h-full text-black">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Get Started</h1>
         <p className="text-gray-600 mb-6">Create an account to unlock amazing features</p>
         
@@ -502,7 +502,7 @@ const AuthForm = ({ type }) => {
               type="text"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
-              className="block w-full px-3 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors"
+              className="block w-full px-3 py-3 text-gray-800 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors"
               placeholder="Enter your name"
               required
             />
@@ -517,7 +517,7 @@ const AuthForm = ({ type }) => {
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="block w-full px-3 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors"
+              className="block w-full px-3 py-3 text-gray-800 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors"
               placeholder="Choose a username"
               required
             />
@@ -532,7 +532,7 @@ const AuthForm = ({ type }) => {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="block w-full px-3 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors"
+              className="block w-full px-3 py-3 text-gray-800 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors"
               placeholder="Enter email"
               required
             />
@@ -546,7 +546,7 @@ const AuthForm = ({ type }) => {
             <select
               value={country}
               onChange={(e) => setCountry(e.target.value)}
-              className="block w-full px-3 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors"
+              className="block w-full px-3 py-3 text-gray-800 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors"
               required
             >
               <option value="">Choose country</option>
@@ -567,7 +567,7 @@ const AuthForm = ({ type }) => {
               type="text"
               value={state}
               onChange={(e) => setState(e.target.value)}
-              className="block w-full px-3 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors"
+              className="block w-full px-3 py-3 text-gray-800 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors"
               placeholder="Choose state"
               required
             />
@@ -582,7 +582,7 @@ const AuthForm = ({ type }) => {
               type="text"
               value={city}
               onChange={(e) => setCity(e.target.value)}
-              className="block w-full px-3 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors"
+              className="block w-full px-3 py-3 text-gray-800 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors"
               placeholder="Enter city"
               required
             />
@@ -598,7 +598,7 @@ const AuthForm = ({ type }) => {
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="block w-full pr-10 px-3 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors"
+                className="block w-full pr-10 px-3 py-3 text-gray-800 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors"
                 placeholder="Create password"
                 required
               />
@@ -624,8 +624,8 @@ const AuthForm = ({ type }) => {
                 type={showConfirmPassword ? "text" : "password"}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="block w-full pr-10 px-3 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors"
-                placeholder="Confirm password"
+                className="block w-full pr-10 px-3 py-3 text-gray-800 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors"
+                placeholder="Confirm Password"
                 required
               />
               <button
@@ -689,7 +689,7 @@ const AuthForm = ({ type }) => {
   // Sign-in form (existing code)
 
   return (
-    <div className="w-full max-h-full p-6">
+    <div className="w-full max-h-full p-6 text-black">
       <h1 className="text-3xl font-bold text-gray-900 mb-6">Welcome back</h1>
       
       {/* Tab Selector */}
